@@ -2,7 +2,7 @@ import warnings
 from typing import Generator, Optional, Union
 
 import numpy as np
-import torch
+import torch as th
 from gym import spaces
 
 try:
@@ -23,7 +23,7 @@ class BaseBuffer(object):
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (Union[torch.device, str]) PyTorch device
+    :param device: (Union[th.device, str]) PyTorch device
         to which the values will be converted
     :param n_envs: (int) Number of parallel environments
     """
@@ -34,7 +34,7 @@ class BaseBuffer(object):
         batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[torch.device, str] = "cpu",
+        device: Union[th.device, str] = "cpu",
         n_envs: int = 1,
     ):
         super(BaseBuffer, self).__init__()
@@ -105,13 +105,13 @@ class BaseBuffer(object):
 
     def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None):
         """
-        :param batch_inds: (torch.Tensor)
+        :param batch_inds: (th.Tensor)
         :param env: (Optional[VecNormalize])
         :return: (Union[RolloutBufferSamples, ReplayBufferSamples])
         """
         raise NotImplementedError()
 
-    def to_torch(self, array: np.ndarray, copy: bool = True) -> torch.Tensor:
+    def to_torch(self, array: np.ndarray, copy: bool = True) -> th.Tensor:
         """
         Convert a numpy array to a PyTorch tensor.
         Note: it copies the data by default
@@ -119,11 +119,11 @@ class BaseBuffer(object):
         :param array: (np.ndarray)
         :param copy: (bool) Whether to copy or not the data
             (may be useful to avoid changing things be reference)
-        :return: (torch.Tensor)
+        :return: (th.Tensor)
         """
         if copy:
-            return torch.tensor(array).to(self.device)
-        return torch.as_tensor(array).to(self.device)
+            return th.tensor(array).to(self.device)
+        return th.as_tensor(array).to(self.device)
 
     @staticmethod
     def _normalize_obs(obs: np.ndarray, env: Optional[VecNormalize] = None) -> np.ndarray:
@@ -145,7 +145,7 @@ class ReplayBuffer(BaseBuffer):
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (torch.device)
+    :param device: (th.device)
     :param n_envs: (int) Number of parallel environments
     :param optimize_memory_usage: (bool) Enable a memory efficient variant
         of the replay buffer which reduces by almost a factor two the memory used,
@@ -160,7 +160,7 @@ class ReplayBuffer(BaseBuffer):
         batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[torch.device, str] = "cpu",
+        device: Union[th.device, str] = "cpu",
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
     ):
@@ -258,7 +258,7 @@ class RolloutBuffer(BaseBuffer):
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (torch.device)
+    :param device: (th.device)
     :param gae_lambda: (float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator
         Equivalent to classic advantage when set to 1.
     :param gamma: (float) Discount factor
@@ -271,7 +271,7 @@ class RolloutBuffer(BaseBuffer):
         batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[torch.device, str] = "cpu",
+        device: Union[th.device, str] = "cpu",
         gae_lambda: float = 1,
         gamma: float = 0.99,
         n_envs: int = 1,
@@ -297,7 +297,7 @@ class RolloutBuffer(BaseBuffer):
         self.generator_ready = False
         super(RolloutBuffer, self).reset()
 
-    def compute_returns_and_advantage(self, last_value: torch.Tensor, dones: np.ndarray) -> None:
+    def compute_returns_and_advantage(self, last_value: th.Tensor, dones: np.ndarray) -> None:
         """
         Post-processing step: compute the returns (sum of discounted rewards)
         and GAE advantage.
@@ -308,7 +308,7 @@ class RolloutBuffer(BaseBuffer):
         where R is the discounted reward with value bootstrap,
         set ``gae_lambda=1.0`` during initialization.
 
-        :param last_value: (torch.Tensor)
+        :param last_value: (th.Tensor)
         :param dones: (np.ndarray)
 
         """
@@ -329,16 +329,16 @@ class RolloutBuffer(BaseBuffer):
         self.returns = self.advantages + self.values
 
     def add(
-        self, obs: np.ndarray, action: np.ndarray, reward: np.ndarray, done: np.ndarray, value: torch.Tensor, log_prob: torch.Tensor
+        self, obs: np.ndarray, action: np.ndarray, reward: np.ndarray, done: np.ndarray, value: th.Tensor, log_prob: th.Tensor
     ) -> None:
         """
         :param obs: (np.ndarray) Observation
         :param action: (np.ndarray) Action
         :param reward: (np.ndarray)
         :param done: (np.ndarray) End of episode signal.
-        :param value: (torch.Tensor) estimated value of the current state
+        :param value: (th.Tensor) estimated value of the current state
             following the current policy.
-        :param log_prob: (torch.Tensor) log probability of the action
+        :param log_prob: (th.Tensor) log probability of the action
             following the current policy.
         """
         if len(log_prob.shape) == 0:
