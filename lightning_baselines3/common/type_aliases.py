@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, NamedTuple, Tuple, Union
 
 import gym
 import numpy as np
-import torch as th
+import torch
 
 from lightning_baselines3.common.callbacks import BaseCallback
 from lightning_baselines3.common.vec_env import VecEnv
@@ -12,26 +12,26 @@ from lightning_baselines3.common.vec_env import VecEnv
 GymEnv = Union[gym.Env, VecEnv]
 GymObs = Union[Tuple, Dict[str, Any], np.ndarray, int]
 GymStepReturn = Tuple[GymObs, float, bool, Dict]
-TensorDict = Dict[str, th.Tensor]
+TensorDict = Dict[str, torch.Tensor]
 OptimizerStateDict = Dict[str, Any]
 MaybeCallback = Union[None, Callable, List[BaseCallback], BaseCallback]
 
 
 class RolloutBufferSamples(NamedTuple):
-    observations: th.Tensor
-    actions: th.Tensor
-    old_values: th.Tensor
-    old_log_prob: th.Tensor
-    advantages: th.Tensor
-    returns: th.Tensor
+    observations: torch.Tensor
+    actions: torch.Tensor
+    old_values: torch.Tensor
+    old_log_prob: torch.Tensor
+    advantages: torch.Tensor
+    returns: torch.Tensor
 
 
 class ReplayBufferSamples(NamedTuple):
-    observations: th.Tensor
-    actions: th.Tensor
-    next_observations: th.Tensor
-    dones: th.Tensor
-    rewards: th.Tensor
+    observations: torch.Tensor
+    actions: torch.Tensor
+    next_observations: torch.Tensor
+    dones: torch.Tensor
+    rewards: torch.Tensor
 
 
 class RolloutReturn(NamedTuple):

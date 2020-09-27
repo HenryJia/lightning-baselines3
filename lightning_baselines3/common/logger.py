@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, TextIO, Tuple, Union
 
 import numpy as np
 import pandas
-import torch as th
+import torch
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -238,7 +238,7 @@ class TensorBoardOutputFormat(KVWriter):
             if isinstance(value, np.ScalarType):
                 self.writer.add_scalar(key, value, step)
 
-            if isinstance(value, th.Tensor):
+            if isinstance(value, torch.Tensor):
                 self.writer.add_histogram(key, value, step)
 
         # Flush the output to the file
@@ -266,11 +266,11 @@ def make_output_format(_format: str, log_dir: str, log_suffix: str = "") -> KVWr
     if _format == "stdout":
         return HumanOutputFormat(sys.stdout)
     elif _format == "log":
-        return HumanOutputFormat(os.path.join(log_dir, f"log{log_suffix}.txt"))
+        return HumanOutputFormat(os.patorch.join(log_dir, f"log{log_suffix}.txt"))
     elif _format == "json":
-        return JSONOutputFormat(os.path.join(log_dir, f"progress{log_suffix}.json"))
+        return JSONOutputFormat(os.patorch.join(log_dir, f"progress{log_suffix}.json"))
     elif _format == "csv":
-        return CSVOutputFormat(os.path.join(log_dir, f"progress{log_suffix}.csv"))
+        return CSVOutputFormat(os.patorch.join(log_dir, f"progress{log_suffix}.csv"))
     elif _format == "tensorboard":
         return TensorBoardOutputFormat(log_dir)
     else:
@@ -560,7 +560,7 @@ def configure(folder: Optional[str] = None, format_strings: Optional[List[str]] 
     if folder is None:
         folder = os.getenv("SB3_LOGDIR")
     if folder is None:
-        folder = os.path.join(tempfile.gettempdir(), datetime.datetime.now().strftime("SB3-%Y-%m-%d-%H-%M-%S-%f"))
+        folder = os.patorch.join(tempfile.gettempdir(), datetime.datetime.now().strftime("SB3-%Y-%m-%d-%H-%M-%S-%f"))
     assert isinstance(folder, str)
     os.makedirs(folder, exist_ok=True)
 

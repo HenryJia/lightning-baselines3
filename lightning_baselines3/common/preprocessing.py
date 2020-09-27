@@ -1,7 +1,7 @@
 from typing import Tuple
 
 import numpy as np
-import torch as th
+import torch
 from gym import spaces
 from torch.nn import functional as F
 
@@ -43,17 +43,17 @@ def is_image_space(observation_space: spaces.Space, channels_last: bool = True, 
     return False
 
 
-def preprocess_obs(obs: th.Tensor, observation_space: spaces.Space, normalize_images: bool = True) -> th.Tensor:
+def preprocess_obs(obs: torch.Tensor, observation_space: spaces.Space, normalize_images: bool = True) -> torch.Tensor:
     """
     Preprocess observation to be to a neural network.
     For images, it normalizes the values by dividing them by 255 (to have values in [0, 1])
     For discrete observations, it create a one hot vector.
 
-    :param obs: (th.Tensor) Observation
+    :param obs: (torch.Tensor) Observation
     :param observation_space: (spaces.Space)
     :param normalize_images: (bool) Whether to normalize images or not
         (True by default)
-    :return: (th.Tensor)
+    :return: (torch.Tensor)
     """
     if isinstance(observation_space, spaces.Box):
         if is_image_space(observation_space) and normalize_images:
@@ -66,10 +66,10 @@ def preprocess_obs(obs: th.Tensor, observation_space: spaces.Space, normalize_im
 
     elif isinstance(observation_space, spaces.MultiDiscrete):
         # Tensor concatenation of one hot encodings of each Categorical sub-space
-        return th.cat(
+        return torch.cat(
             [
                 F.one_hot(obs_.long(), num_classes=int(observation_space.nvec[idx])).float()
-                for idx, obs_ in enumerate(th.split(obs.long(), 1, dim=1))
+                for idx, obs_ in enumerate(torch.split(obs.long(), 1, dim=1))
             ],
             dim=-1,
         ).view(obs.shape[0], sum(observation_space.nvec))

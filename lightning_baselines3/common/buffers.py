@@ -2,7 +2,7 @@ import warnings
 from typing import Generator, Optional, Union
 
 import numpy as np
-import torch as th
+import torch
 from gym import spaces
 
 try:
@@ -23,7 +23,7 @@ class BaseBuffer(object):
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (Union[th.device, str]) PyTorch device
+    :param device: (Union[torch.device, str]) PyTorch device
         to which the values will be converted
     :param n_envs: (int) Number of parallel environments
     """
@@ -31,13 +31,15 @@ class BaseBuffer(object):
     def __init__(
         self,
         buffer_size: int,
+        batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[th.device, str] = "cpu",
+        device: Union[torch.device, str] = "cpu",
         n_envs: int = 1,
     ):
         super(BaseBuffer, self).__init__()
         self.buffer_size = buffer_size
+        self.batch_size = batch_size
         self.observation_space = observation_space
         self.action_space = action_space
         self.obs_shape = get_obs_shape(observation_space)
@@ -78,7 +80,7 @@ class BaseBuffer(object):
 
     def extend(self, *args, **kwargs) -> None:
         """
-        Add a new batch of transitions to the buffer
+        Add a new batch of transitions to the bufferrollout_buffer
         """
         # Do a for loop along the batch axis
         for data in zip(*args):
@@ -91,26 +93,25 @@ class BaseBuffer(object):
         self.pos = 0
         self.full = False
 
-    def sample(self, batch_size: int, env: Optional[VecNormalize] = None):
+    def sample(self, env: Optional[VecNormalize] = None):
         """
-        :param batch_size: (int) Number of element to sample
         :param env: (Optional[VecNormalize]) associated gym VecEnv
             to normalize the observations/rewards when sampling
         :return: (Union[RolloutBufferSamples, ReplayBufferSamples])
         """
         upper_bound = self.buffer_size if self.full else self.pos
-        batch_inds = np.random.randint(0, upper_bound, size=batch_size)
+        batch_inds = np.random.randint(0, upper_bound, size=self.batch_size)
         return self._get_samples(batch_inds, env=env)
 
     def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None):
         """
-        :param batch_inds: (th.Tensor)
+        :param batch_inds: (torch.Tensor)
         :param env: (Optional[VecNormalize])
         :return: (Union[RolloutBufferSamples, ReplayBufferSamples])
         """
         raise NotImplementedError()
 
-    def to_torch(self, array: np.ndarray, copy: bool = True) -> th.Tensor:
+    def to_torch(self, array: np.ndarray, copy: bool = True) -> torch.Tensor:
         """
         Convert a numpy array to a PyTorch tensor.
         Note: it copies the data by default
@@ -118,11 +119,11 @@ class BaseBuffer(object):
         :param array: (np.ndarray)
         :param copy: (bool) Whether to copy or not the data
             (may be useful to avoid changing things be reference)
-        :return: (th.Tensor)
+        :return: (torch.Tensor)
         """
         if copy:
-            return th.tensor(array).to(self.device)
-        return th.as_tensor(array).to(self.device)
+            return torch.tensor(array).to(self.device)
+        return torch.as_tensor(array).to(self.device)
 
     @staticmethod
     def _normalize_obs(obs: np.ndarray, env: Optional[VecNormalize] = None) -> np.ndarray:
@@ -144,7 +145,7 @@ class ReplayBuffer(BaseBuffer):
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (th.device)
+    :param device: (torch.device)
     :param n_envs: (int) Number of parallel environments
     :param optimize_memory_usage: (bool) Enable a memory efficient variant
         of the replay buffer which reduces by almost a factor two the memory used,
@@ -156,13 +157,14 @@ class ReplayBuffer(BaseBuffer):
     def __init__(
         self,
         buffer_size: int,
+        batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[th.device, str] = "cpu",
+        device: Union[torch.device, str] = "cpu",
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
     ):
-        super(ReplayBuffer, self).__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super(ReplayBuffer, self).__init__(buffer_size, batch_size, observation_space, action_space, device, n_envs=n_envs)
 
         assert n_envs == 1, "Replay buffer only support single environment for now"
 
@@ -212,26 +214,25 @@ class ReplayBuffer(BaseBuffer):
             self.full = True
             self.pos = 0
 
-    def sample(self, batch_size: int, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
+    def sample(self, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
         """
         Sample elements from the replay buffer.
         Custom sampling when using memory efficient variant,
         as we should not sample the element with index `self.pos`
         See https://github.com/DLR-RM/stable-baselines3/pull/28#issuecomment-637559274
 
-        :param batch_size: (int) Number of element to sample
         :param env: (Optional[VecNormalize]) associated gym VecEnv
             to normalize the observations/rewards when sampling
         :return: (Union[RolloutBufferSamples, ReplayBufferSamples])
         """
         if not self.optimize_memory_usage:
-            return super().sample(batch_size=batch_size, env=env)
+            return super().sample(batch_size=self.batch_size, env=env)
         # Do not sample the element with index `self.pos` as the transitions is invalid
         # (we use only one array to store `obs` and `next_obs`)
         if self.full:
-            batch_inds = (np.random.randint(1, self.buffer_size, size=batch_size) + self.pos) % self.buffer_size
+            batch_inds = (np.random.randint(1, self.buffer_size, size=self.batch_size) + self.pos) % self.buffer_size
         else:
-            batch_inds = np.random.randint(0, self.pos, size=batch_size)
+            batch_inds = np.random.randint(0, self.pos, size=self.batch_size)
         return self._get_samples(batch_inds, env=env)
 
     def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
@@ -257,7 +258,7 @@ class RolloutBuffer(BaseBuffer):
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (th.device)
+    :param device: (torch.device)
     :param gae_lambda: (float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator
         Equivalent to classic advantage when set to 1.
     :param gamma: (float) Discount factor
@@ -267,15 +268,16 @@ class RolloutBuffer(BaseBuffer):
     def __init__(
         self,
         buffer_size: int,
+        batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[th.device, str] = "cpu",
+        device: Union[torch.device, str] = "cpu",
         gae_lambda: float = 1,
         gamma: float = 0.99,
         n_envs: int = 1,
     ):
 
-        super(RolloutBuffer, self).__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super(RolloutBuffer, self).__init__(buffer_size, batch_size, observation_space, action_space, device, n_envs=n_envs)
         self.gae_lambda = gae_lambda
         self.gamma = gamma
         self.observations, self.actions, self.rewards, self.advantages = None, None, None, None
@@ -295,7 +297,7 @@ class RolloutBuffer(BaseBuffer):
         self.generator_ready = False
         super(RolloutBuffer, self).reset()
 
-    def compute_returns_and_advantage(self, last_value: th.Tensor, dones: np.ndarray) -> None:
+    def compute_returns_and_advantage(self, last_value: torch.Tensor, dones: np.ndarray) -> None:
         """
         Post-processing step: compute the returns (sum of discounted rewards)
         and GAE advantage.
@@ -306,7 +308,7 @@ class RolloutBuffer(BaseBuffer):
         where R is the discounted reward with value bootstrap,
         set ``gae_lambda=1.0`` during initialization.
 
-        :param last_value: (th.Tensor)
+        :param last_value: (torch.Tensor)
         :param dones: (np.ndarray)
 
         """
@@ -327,16 +329,16 @@ class RolloutBuffer(BaseBuffer):
         self.returns = self.advantages + self.values
 
     def add(
-        self, obs: np.ndarray, action: np.ndarray, reward: np.ndarray, done: np.ndarray, value: th.Tensor, log_prob: th.Tensor
+        self, obs: np.ndarray, action: np.ndarray, reward: np.ndarray, done: np.ndarray, value: torch.Tensor, log_prob: torch.Tensor
     ) -> None:
         """
         :param obs: (np.ndarray) Observation
         :param action: (np.ndarray) Action
         :param reward: (np.ndarray)
         :param done: (np.ndarray) End of episode signal.
-        :param value: (th.Tensor) estimated value of the current state
+        :param value: (torch.Tensor) estimated value of the current state
             following the current policy.
-        :param log_prob: (th.Tensor) log probability of the action
+        :param log_prob: (torch.Tensor) log probability of the action
             following the current policy.
         """
         if len(log_prob.shape) == 0:
@@ -353,7 +355,7 @@ class RolloutBuffer(BaseBuffer):
         if self.pos == self.buffer_size:
             self.full = True
 
-    def get(self, batch_size: Optional[int] = None) -> Generator[RolloutBufferSamples, None, None]:
+    def get(self) -> Generator[RolloutBufferSamples, None, None]:
         assert self.full, ""
         indices = np.random.permutation(self.buffer_size * self.n_envs)
         # Prepare the data
@@ -363,13 +365,16 @@ class RolloutBuffer(BaseBuffer):
             self.generator_ready = True
 
         # Return everything, don't create minibatches
-        if batch_size is None:
-            batch_size = self.buffer_size * self.n_envs
+        if self.batch_size <= 0:
+            self.batch_size = self.buffer_size * self.n_envs
 
         start_idx = 0
         while start_idx < self.buffer_size * self.n_envs:
-            yield self._get_samples(indices[start_idx : start_idx + batch_size])
-            start_idx += batch_size
+            yield self._get_samples(indices[start_idx : start_idx + self.batch_size])
+            start_idx += self.batch_size
+
+    def __iter__(self):
+        return self.get()
 
     def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> RolloutBufferSamples:
         data = (
