@@ -2,8 +2,8 @@ import pickle
 
 import numpy as np
 
-from stable_baselines3.common.running_mean_std import RunningMeanStd
-from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvWrapper
+from lightning_baselines3.common.running_mean_std import RunningMeanStd
+from lightning_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvWrapper
 
 
 class VecNormalize(VecEnvWrapper):

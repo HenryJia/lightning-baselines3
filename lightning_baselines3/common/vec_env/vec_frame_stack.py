@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 from gym import spaces
 
-from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvWrapper
+from lightning_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvWrapper
 
 
 class VecFrameStack(VecEnvWrapper):

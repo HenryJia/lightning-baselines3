@@ -5,7 +5,7 @@ from typing import Sequence
 import gym
 import numpy as np
 
-from stable_baselines3.common.vec_env.base_vec_env import CloudpickleWrapper, VecEnv
+from lightning_baselines3.common.vec_env.base_vec_env import CloudpickleWrapper, VecEnv
 
 
 def _worker(remote, parent_remote, env_fn_wrapper):

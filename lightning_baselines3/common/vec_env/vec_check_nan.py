@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 
-from stable_baselines3.common.vec_env.base_vec_env import VecEnvWrapper
+from lightning_baselines3.common.vec_env.base_vec_env import VecEnvWrapper
 
 
 class VecCheckNan(VecEnvWrapper):
