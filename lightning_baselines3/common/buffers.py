@@ -2,7 +2,7 @@ import warnings
 from typing import Generator, Optional, Union
 
 import numpy as np
-import torch as th
+import torch
 from gym import spaces
 
 try:
@@ -14,6 +14,7 @@ except ImportError:
 from lightning_baselines3.common.preprocessing import get_action_dim, get_obs_shape
 from lightning_baselines3.common.type_aliases import ReplayBufferSamples, RolloutBufferSamples
 from lightning_baselines3.common.vec_env import VecNormalize
+from lightning_baselines3.common.utils import to_torch
 
 
 class BaseBuffer(object):
@@ -23,7 +24,7 @@ class BaseBuffer(object):
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (Union[th.device, str]) PyTorch device
+    :param device: (Union[torch.device, str]) PyTorch device
         to which the values will be converted
     :param n_envs: (int) Number of parallel environments
     """
@@ -34,7 +35,7 @@ class BaseBuffer(object):
         batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[th.device, str] = "cpu",
+        device: Union[torch.device, str, None] = None,
         n_envs: int = 1,
     ):
         super(BaseBuffer, self).__init__()
@@ -50,7 +51,7 @@ class BaseBuffer(object):
         self.n_envs = n_envs
 
     @staticmethod
-    def swap_and_flatten(arr: np.ndarray) -> np.ndarray:
+    def swap_and_flatten(arr: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
         """
         Swap and then flatten axes 0 (buffer_size) and 1 (n_envs)
         to convert shape from [n_steps, n_envs, ...] (when ... is the shape of the features)
@@ -62,6 +63,8 @@ class BaseBuffer(object):
         shape = arr.shape
         if len(shape) < 3:
             shape = shape + (1,)
+        if isinstance(arr, torch.Tensor): # If we're working with torch.Tensor, use view to avoid a copy
+            return torch.transpose(arr, 0, 1).view(shape[0] * shape[1], *shape[2:])
         return arr.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
 
     def size(self) -> int:
@@ -86,7 +89,8 @@ class BaseBuffer(object):
         for data in zip(*args):
             self.add(*data)
 
-    def reset(self) -> None:
+    def reset(self) -> None:    :param copy: (bool) Whether to copy or not the data
+
         """
         Reset the buffer.
         """
@@ -105,25 +109,11 @@ class BaseBuffer(object):
 
     def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None):
         """
-        :param batch_inds: (th.Tensor)
+        :param batch_inds: (torch.Tensor)
         :param env: (Optional[VecNormalize])
         :return: (Union[RolloutBufferSamples, ReplayBufferSamples])
         """
         raise NotImplementedError()
-
-    def to_torch(self, array: np.ndarray, copy: bool = True) -> th.Tensor:
-        """
-        Convert a numpy array to a PyTorch tensor.
-        Note: it copies the data by default
-
-        :param array: (np.ndarray)
-        :param copy: (bool) Whether to copy or not the data
-            (may be useful to avoid changing things be reference)
-        :return: (th.Tensor)
-        """
-        if copy:
-            return th.tensor(array).to(self.device)
-        return th.as_tensor(array).to(self.device)
 
     @staticmethod
     def _normalize_obs(obs: np.ndarray, env: Optional[VecNormalize] = None) -> np.ndarray:
@@ -145,7 +135,7 @@ class ReplayBuffer(BaseBuffer):
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (th.device)
+    :param device: (torch.device)
     :param n_envs: (int) Number of parallel environments
     :param optimize_memory_usage: (bool) Enable a memory efficient variant
         of the replay buffer which reduces by almost a factor two the memory used,
@@ -160,7 +150,7 @@ class ReplayBuffer(BaseBuffer):
         batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[th.device, str] = "cpu",
+        device: Union[torch.device, str] = "cpu",
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
     ):
@@ -251,14 +241,14 @@ class ReplayBuffer(BaseBuffer):
         return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
 
 
-class RolloutBuffer(BaseBuffer):
+class RolloutBufferBaseBuffer):
     """
     Rollout buffer used in on-policy algorithms like A2C/PPO.
 
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (th.device)
+    :param device: (torch.device)
     :param gae_lambda: (float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator
         Equivalent to classic advantage when set to 1.
     :param gamma: (float) Discount factor
@@ -271,33 +261,38 @@ class RolloutBuffer(BaseBuffer):
         batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[th.device, str] = "cpu",
+        device: Union[torch.device, str, None] = None,
         gae_lambda: float = 1,
         gamma: float = 0.99,
         n_envs: int = 1,
     ):
-
         super(RolloutBuffer, self).__init__(buffer_size, batch_size, observation_space, action_space, device, n_envs=n_envs)
         self.gae_lambda = gae_lambda
         self.gamma = gamma
-        self.observations, self.actions, self.rewards, self.advantages = None, None, None, None
-        self.returns, self.dones, self.values, self.log_probs = None, None, None, None
-        self.generator_ready = False
         self.reset()
 
     def reset(self) -> None:
-        self.observations = np.zeros((self.buffer_size, self.n_envs) + self.obs_shape, dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32)
-        self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        self.dones = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        self.values = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        self.log_probs = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        self.advantages = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        self.generator_ready = False
+        #self.observations = np.zeros((self.buffer_size, self.n_envs) + self.obs_shape, dtype=np.float32)
+        #self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32)
+        #self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        #self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        #self.dones = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        #self.values = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        #self.log_probs = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        #self.advantages = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+
+        self.observations = []
+        self.actions = []
+        self.rewards = []
+        self.returns = []
+        self.dones = []
+        self.values = []
+        self.log_probs = []
+        self.advantages = []
+
         super(RolloutBuffer, self).reset()
 
-    def compute_returns_and_advantage(self, last_value: th.Tensor, dones: np.ndarray) -> None:
+    def compute_returns_and_advantage(self, last_value: torch.Tensor, dones: np.ndarray) -> None:
         """
         Post-processing step: compute the returns (sum of discounted rewards)
         and GAE advantage.
@@ -308,7 +303,7 @@ class RolloutBuffer(BaseBuffer):
         where R is the discounted reward with value bootstrap,
         set ``gae_lambda=1.0`` during initialization.
 
-        :param last_value: (th.Tensor)
+        :param last_value: (torch.Tensor)
         :param dones: (np.ndarray)
 
         """
@@ -329,35 +324,43 @@ class RolloutBuffer(BaseBuffer):
         self.returns = self.advantages + self.values
 
     def add(
-        self, obs: np.ndarray, action: np.ndarray, reward: np.ndarray, done: np.ndarray, value: th.Tensor, log_prob: th.Tensor
+        self, obs: np.ndarray, action: np.ndarray, reward: np.ndarray, done: np.ndarray, value: torch.Tensor, log_prob: torch.Tensor
     ) -> None:
         """
         :param obs: (np.ndarray) Observation
         :param action: (np.ndarray) Action
         :param reward: (np.ndarray)
         :param done: (np.ndarray) End of episode signal.
-        :param value: (th.Tensor) estimated value of the current state
+        :param value: (torch.Tensor) estimated value of the current state
             following the current policy.
-        :param log_prob: (th.Tensor) log probability of the action
+        :param log_prob: (torch.Tensor) log probability of the action
             following the current policy.
         """
         if len(log_prob.shape) == 0:
             # Reshape 0-d tensor to avoid error
             log_prob = log_prob.reshape(-1, 1)
 
-        self.observations[self.pos] = np.array(obs).copy()
-        self.actions[self.pos] = np.array(action).copy()
-        self.rewards[self.pos] = np.array(reward).copy()
-        self.dones[self.pos] = np.array(done).copy()
-        self.values[self.pos] = value.clone().cpu().numpy().flatten()
-        self.log_probs[self.pos] = log_prob.clone().cpu().numpy()
+        self.observations += [np.array(obs)]
+        self.actions += [np.array(action)]
+        self.rewards += [np.array(reward)]
+        self.dones += [np.array(done)]
+        self.values += [value.flatten()]
+        self.log_probs += [log_prob]
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True
 
     def get(self) -> Generator[RolloutBufferSamples, None, None]:
-        assert self.full, ""
-        indices = np.random.permutation(self.buffer_size * self.n_envs)
+        assert self.full, "Can only get from RolloutBuffer when RolloutBuffer is full"
+        indices = tuple(np.random.permutation(self.buffer_size * self.n_envs))
+
+        self.observations = np.concatenate(self.observations, axis=0)
+        self.actions = np.concatenate(self.actions, axis=0)
+        self.rewards = np.concatenate(self.rewards, axis=0)
+        self.dones = np.concatenate(self.dones, axis=0)
+        self.values = torch.cat(self.values, dim=0)
+        self.log_probs = torch.cat(self.log_probs, dim=0)
+
         # Prepare the data
         if not self.generator_ready:
             for tensor in ["observations", "actions", "values", "log_probs", "advantages", "returns"]:
@@ -370,13 +373,14 @@ class RolloutBuffer(BaseBuffer):
 
         start_idx = 0
         while start_idx < self.buffer_size * self.n_envs:
-            yield self._get_samples(indices[start_idx : start_idx + self.batch_size])
+            yield self._get_samples(indices[start_idx:start_idx + self.batch_size])
             start_idx += self.batch_size
 
     def __iter__(self):
         return self.get()
 
-    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> RolloutBufferSamples:
+    def _get_samples(self, batch_inds: Union[tuple, list]) -> RolloutBufferSamples:
+        assert self.log_probs.device == self.values.device, 'Tensors must be on the same device in RolloutBuffer'
         data = (
             self.observations[batch_inds],
             self.actions[batch_inds],
@@ -385,4 +389,4 @@ class RolloutBuffer(BaseBuffer):
             self.advantages[batch_inds].flatten(),
             self.returns[batch_inds].flatten(),
         )
-        return RolloutBufferSamples(*tuple(map(self.to_torch, data)))
+        return RolloutBufferSamples(*tuple(map(to_torch, data, copy=False, device=self.log_probs.device)))

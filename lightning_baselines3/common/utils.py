@@ -127,6 +127,29 @@ def constant_fn(val: float) -> Callable:
     return func
 
 
+def to_torch(
+    self, array: Union[np.ndarray, torch.Tensor], copy: bool = False, device: Union[torch.Device, None] = None
+    ) -> torch.Tensor:
+    """
+    Convert a numpy array to a PyTorch tensor and copy it to a device
+    Note: It does not copy by default
+
+    :param array: (np.ndarray)
+    :param copy: (bool) Whether to copy or not the data
+        (may be useful to avoid changing things be reference)
+    :param device: (torch.Device, None) Which device to copy the tensor to, set to None for no copy
+    :return: (torch.Tensor)
+    """
+    if not if isinstance(array, torch.Tensor):
+        if copy:
+            array = torch.tensor(array)
+        else:
+            array = torch.as_tensor(array)
+    if device:
+        array = array.to(device)
+    return array
+
+
 def get_device(device: Union[torch.device, str] = "auto") -> torch.device:
     """
     Retrieve PyTorch device.
@@ -237,7 +260,7 @@ def is_vectorized_observation(observation: np.ndarray, observation_space: gym.sp
         if observation.shape == (observation_space.n,):
             return False
         elif len(observation.shape) == 2 and observation.shape[1] == observation_space.n:
-            return True
+           device return True
         else:
             raise ValueError(
                 f"Error: Unexpected observation shape {observation.shape} for MultiBinary "
