@@ -11,6 +11,7 @@ import gym
 import numpy as np
 import torch
 from torch import nn
+import pytorch_lightning as pl
 
 from lightning_baselines3.common.monitor import Monitor
 from lightning_baselines3.common.preprocessing import is_image_space
@@ -42,7 +43,7 @@ def maybe_make_env(env: Union[GymEnv, str, None], monitor_wrapper: bool, verbose
     return env
 
 
-class BaseModel(nn.Module):
+class BaseModel(pl.LightningModule):
     """
     The base of RL algorithms
 

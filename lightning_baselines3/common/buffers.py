@@ -35,7 +35,6 @@ class BaseBuffer(object):
         batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[torch.device, str, None] = None,
         n_envs: int = 1,
     ):
         super(BaseBuffer, self).__init__()
@@ -47,7 +46,6 @@ class BaseBuffer(object):
         self.action_dim = get_action_dim(action_space)
         self.pos = 0
         self.full = False
-        self.device = device
         self.n_envs = n_envs
 
     @staticmethod
@@ -66,6 +64,29 @@ class BaseBuffer(object):
         if isinstance(arr, torch.Tensor): # If we're working with torch.Tensor, use view to avoid a copy
             return torch.transpose(arr, 0, 1).view(shape[0] * shape[1], *shape[2:])
         return arr.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
+
+    #@staticmethod
+    #def to_torch(
+        #array: Union[np.ndarray, torch.Tensor], copy: bool = False, device: Union[torch.Device, None] = None
+        #) -> torch.Tensor:
+        #"""
+        #Convert a numpy array to a PyTorch tensor and copy it to a device
+        #Note: It does not copy by default
+
+        #:param array: (np.ndarray)
+        #:param copy: (bool) Whether to copy or not the data
+            #(may be useful to avoid changing things be reference)
+        #:param device: (torch.Device, None) Which device to copy the tensor to, set to None for no copy
+        #:return: (torch.Tensor)
+        #"""
+        #if not if isinstance(array, torch.Tensor):
+            #if copy:
+                #array = torch.tensor(array)
+            #else:
+                #array = torch.as_tensor(array)
+        #if device:
+            #array = array.pin_memory().to(device)
+        #return array
 
     def size(self) -> int:
         """
@@ -217,7 +238,7 @@ class ReplayBuffer(BaseBuffer):
         """
         if not self.optimize_memory_usage:
             return super().sample(batch_size=self.batch_size, env=env)
-        # Do not sample the element with index `self.pos` as the transitions is invalid
+        # Do not sample the element with index `self.pos` as the transitions is train_loader = DataLoader(MNIST(os.getcwd(), download=True, transform=transforms.ToTensor()))invalid
         # (we use only one array to store `obs` and `next_obs`)
         if self.full:
             batch_inds = (np.random.randint(1, self.buffer_size, size=self.batch_size) + self.pos) % self.buffer_size
@@ -261,7 +282,6 @@ class RolloutBufferBaseBuffer):
         batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[torch.device, str, None] = None,
         gae_lambda: float = 1,
         gamma: float = 0.99,
         n_envs: int = 1,
@@ -269,33 +289,22 @@ class RolloutBufferBaseBuffer):
         super(RolloutBuffer, self).__init__(buffer_size, batch_size, observation_space, action_space, device, n_envs=n_envs)
         self.gae_lambda = gae_lambda
         self.gamma = gamma
-        self.reset()
+        self.reset().to(self.device)
 
     def reset(self) -> None:
-        #self.observations = np.zeros((self.buffer_size, self.n_envs) + self.obs_shape, dtype=np.float32)
-        #self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32)
-        #self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        #self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        #self.dones = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        #self.values = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        #self.log_probs = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        #self.advantages = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
 
         self.observations = []
         self.actions = []
         self.rewards = []
-        self.returns = []
         self.dones = []
         self.values = []
         self.log_probs = []
-        self.advantages = []
 
         super(RolloutBuffer, self).reset()
 
-    def compute_returns_and_advantage(self, last_value: torch.Tensor, dones: np.ndarray) -> None:
+    def finalize(self, last_value: torch.Tensor last_dones: np.ndarray) -> RolloutBufferSamples:
         """
-        Post-processing step: compute the returns (sum of discounted rewards)
-        and GAE advantage.
+        Finalize and compute the returns (sum of discounted rewards) and GAE advantage.
         Adapted from Stable-Baselines PPO2.
 
         Uses Generalized Advantage Estimation (https://arxiv.org/abs/1506.02438)
@@ -303,25 +312,44 @@ class RolloutBufferBaseBuffer):
         where R is the discounted reward with value bootstrap,
         set ``gae_lambda=1.0`` during initialization.
 
-        :param last_value: (torch.Tensor)
         :param dones: (np.ndarray)
 
         """
-        # convert to numpy
-        last_value = last_value.clone().cpu().numpy().flatten()
+        assert self.full, "Can only finalize RolloutBuffer when RolloutBuffer is full"
+        assert next_value.device == self.values.device, 'All value function outputs must be on same device'
+
+        self.observations = np.concatenate(self.observations, axis=0)
+        self.actions = np.concatenate(self.actions, axis=0)
+        self.rewards = np.concatenate(self.rewards, axis=0)
+        self.dones = np.concatenate(self.dones, axis=0)
+        self.values = torch.cat(self.values, dim=0)
+        self.log_probs = torch.cat(self.log_probs, dim=0)
+
+        # Move everything to torch
+        # Lightning can handle moving things to device to some extent, but we need to make sure everything
+        # is consistent for computing advantages and returns
+        self.observations = self.as_tensor(self.observations)
+        self.actions = self.as_tensor(self.actions)
+        self.rewards = self.as_tensor(self.rewards).to(device=next_value.device)
+        self.dones = self.as_tensor(self.dones).to(device=next_value.device)
+        last_dones = self.as_tensor(last_dones).to(device=next_value.device)
 
         last_gae_lam = 0
+        advantages = torch.zeros_like(self.rewards)
         for step in reversed(range(self.buffer_size)):
             if step == self.buffer_size - 1:
-                next_non_terminal = 1.0 - dones
+                next_non_terminal = 1.0 - last_dones
                 next_value = last_value
             else:
                 next_non_terminal = 1.0 - self.dones[step + 1]
                 next_value = self.values[step + 1]
             delta = self.rewards[step] + self.gamma * next_value * next_non_terminal - self.values[step]
             last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
-            self.advantages[step] = last_gae_lam
-        self.returns = self.advantages + self.values
+            advantages[step] = last_gae_lam
+        returns = advantages + self.values
+
+    return RolloutBufferSamples(self.observations, self.actions, self.values, self.log_prob, advantage, returns)
+
 
     def add(
         self, obs: np.ndarray, action: np.ndarray, reward: np.ndarray, done: np.ndarray, value: torch.Tensor, log_prob: torch.Tensor
@@ -338,7 +366,7 @@ class RolloutBufferBaseBuffer):
         """
         if len(log_prob.shape) == 0:
             # Reshape 0-d tensor to avoid error
-            log_prob = log_prob.reshape(-1, 1)
+            log_prob = log_prob[:, None]
 
         self.observations += [np.array(obs)]
         self.actions += [np.array(action)]
@@ -350,43 +378,5 @@ class RolloutBufferBaseBuffer):
         if self.pos == self.buffer_size:
             self.full = True
 
-    def get(self) -> Generator[RolloutBufferSamples, None, None]:
-        assert self.full, "Can only get from RolloutBuffer when RolloutBuffer is full"
-        indices = tuple(np.random.permutation(self.buffer_size * self.n_envs))
 
-        self.observations = np.concatenate(self.observations, axis=0)
-        self.actions = np.concatenate(self.actions, axis=0)
-        self.rewards = np.concatenate(self.rewards, axis=0)
-        self.dones = np.concatenate(self.dones, axis=0)
-        self.values = torch.cat(self.values, dim=0)
-        self.log_probs = torch.cat(self.log_probs, dim=0)
 
-        # Prepare the data
-        if not self.generator_ready:
-            for tensor in ["observations", "actions", "values", "log_probs", "advantages", "returns"]:
-                self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
-            self.generator_ready = True
-
-        # Return everything, don't create minibatches
-        if self.batch_size <= 0:
-            self.batch_size = self.buffer_size * self.n_envs
-
-        start_idx = 0
-        while start_idx < self.buffer_size * self.n_envs:
-            yield self._get_samples(indices[start_idx:start_idx + self.batch_size])
-            start_idx += self.batch_size
-
-    def __iter__(self):
-        return self.get()
-
-    def _get_samples(self, batch_inds: Union[tuple, list]) -> RolloutBufferSamples:
-        assert self.log_probs.device == self.values.device, 'Tensors must be on the same device in RolloutBuffer'
-        data = (
-            self.observations[batch_inds],
-            self.actions[batch_inds],
-            self.values[batch_inds].flatten(),
-            self.log_probs[batch_inds].flatten(),
-            self.advantages[batch_inds].flatten(),
-            self.returns[batch_inds].flatten(),
-        )
-        return RolloutBufferSamples(*tuple(map(to_torch, data, copy=False, device=self.log_probs.device)))

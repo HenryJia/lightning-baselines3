@@ -127,29 +127,6 @@ def constant_fn(val: float) -> Callable:
     return func
 
 
-def to_torch(
-    self, array: Union[np.ndarray, torch.Tensor], copy: bool = False, device: Union[torch.Device, None] = None
-    ) -> torch.Tensor:
-    """
-    Convert a numpy array to a PyTorch tensor and copy it to a device
-    Note: It does not copy by default
-
-    :param array: (np.ndarray)
-    :param copy: (bool) Whether to copy or not the data
-        (may be useful to avoid changing things be reference)
-    :param device: (torch.Device, None) Which device to copy the tensor to, set to None for no copy
-    :return: (torch.Tensor)
-    """
-    if not if isinstance(array, torch.Tensor):
-        if copy:
-            array = torch.tensor(array)
-        else:
-            array = torch.as_tensor(array)
-    if device:
-        array = array.to(device)
-    return array
-
-
 def get_device(device: Union[torch.device, str] = "auto") -> torch.device:
     """
     Retrieve PyTorch device.
