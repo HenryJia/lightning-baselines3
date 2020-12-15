@@ -123,6 +123,9 @@ class BaseModel(pl.LightningModule):
             raise ValueError("generalized State-Dependent Exploration (gSDE) can only be used with continuous actions.")
 
 
+    def reset(self): # Reset the environment
+        self._last_obs = self.env.reset()
+
 
     def _wrap_env(self, env: GymEnv) -> VecEnv:
         if not isinstance(env, VecEnv):
@@ -135,93 +138,6 @@ class BaseModel(pl.LightningModule):
                 print("Wrapping the env in a VecTransposeImage.")
             env = VecTransposeImage(env)
         return env
-
-
-    def _update_current_progress_remaining(self, num_timesteps: int, total_timesteps: int) -> None:
-        """
-        Compute current progress remaining (starts from 1 and ends to 0)
-
-        :param num_timesteps: current number of timesteps
-        :param total_timesteps:
-        """
-        self._current_progress_remaining = 1.0 - float(num_timesteps) / float(total_timesteps)
-
-
-    def get_vec_normalize_env(self) -> Optional[VecNormalize]:
-        """
-        Return the ``VecNormalize`` wrapper of the training env
-        if it exists.
-        :return: Optional[VecNormalize] The ``VecNormalize`` env.
-        """
-        return self._vec_normalize_env
-
-
-    def set_env(self, env: GymEnv) -> None:
-        """
-        Checks the validity of the environment, and if it is coherent, set it as the current environment.
-        Furthermore wrap any non vectorized env into a vectorized
-        checked parameters:
-        - observation_space
-        - action_space
-
-        :param env: The environment for learning a policy
-        """
-        check_for_correct_spaces(env, self.observation_space, self.action_space)
-        # it must be coherent now
-        # if it is not a VecEnv, make it a VecEnv
-        env = self._wrap_env(env)
-
-        self.n_envs = env.num_envs
-        self.env = env
-
-
-    #@abstractmethod
-    #def learn(
-        #self,
-        #total_timesteps: int,
-        #callback: MaybeCallback = None,
-        #log_interval: int = 100,
-        #tb_log_name: str = "run",
-        #eval_env: Optional[GymEnv] = None,
-        #eval_freq: int = -1,
-        #n_eval_episodes: int = 5,
-        #eval_log_path: Optional[str] = None,
-        #reset_num_timesteps: bool = True,
-    #) -> "BaseAlgorithm":
-        #"""
-        #Return a trained model.
-
-        #:param total_timesteps: (int) The total number of samples (env steps) to train on
-        #:param callback: (MaybeCallback) callback(s) called at every step with state of the algorithm.
-        #:param log_interval: (int) The number of timesteps before logging.
-        #:param tb_log_name: (str) the name of the run for TensorBoard logging
-        #:param eval_env: (gym.Env) Environment that will be used to evaluate the agent
-        #:param eval_freq: (int) Evaluate the agent every ``eval_freq`` timesteps (this may vary a little)
-        #:param n_eval_episodes: (int) Number of episode to evaluate the agent
-        #:param eval_log_path: (Optional[str]) Path to a folder where the evaluations will be saved
-        #:param reset_num_timesteps: (bool) whether or not to reset the current timestep number (used in logging)
-        #:return: (BaseAlgorithm) the trained model
-        #"""
-
-
-    @abstractmethod
-    def predict(
-        self,
-        observation: np.ndarray,
-        state: Optional[np.ndarray] = None,
-        mask: Optional[np.ndarray] = None,
-        deterministic: bool = False,
-    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
-        """
-        Get the model's action(s) from an observation
-
-        :param observation: (np.ndarray) the input observation
-        :param state: (Optional[np.ndarray]) The last states (can be None, used in recurrent policies)
-        :param mask: (Optional[np.ndarray]) The last masks (can be None, used in recurrent policies)
-        :param deterministic: (bool) Whether or not to return deterministic actions.
-        :return: (Tuple[np.ndarray, Optional[np.ndarray]]) the model's action and the next state
-            (used in recurrent policies)
-        """
 
 
     def set_random_seed(self, seed: Optional[int] = None) -> None:

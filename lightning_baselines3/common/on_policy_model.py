@@ -91,7 +91,7 @@ class OnPolicyModel(BaseModel):
         
 
     def collect_rollout(self):
-        assert self._last_obs = self.env.reset()
+        assert self._last_obs is not None, "No previous observation was provided"
         # Sample new weights for the state dependent exploration
         if self.use_sde:
             self.reset_noise(env.num_envs)
