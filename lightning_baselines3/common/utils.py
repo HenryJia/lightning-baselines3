@@ -14,9 +14,9 @@ try:
 except ImportError:
     SummaryWriter = None
 
-from stable_baselines3.common.preprocessing import is_image_space
-from stable_baselines3.common.type_aliases import GymEnv
-from stable_baselines3.common.vec_env import VecTransposeImage
+from lightning_baselines3.common.preprocessing import is_image_space
+from lightning_baselines3.common.type_aliases import GymEnv
+from lightning_baselines3.common.vec_env import VecTransposeImage
 
 
 def set_random_seed(seed: int, using_cuda: bool = False) -> None:
@@ -237,7 +237,7 @@ def is_vectorized_observation(observation: np.ndarray, observation_space: gym.sp
         if observation.shape == (observation_space.n,):
             return False
         elif len(observation.shape) == 2 and observation.shape[1] == observation_space.n:
-           device return True
+            return True
         else:
             raise ValueError(
                 f"Error: Unexpected observation shape {observation.shape} for MultiBinary "

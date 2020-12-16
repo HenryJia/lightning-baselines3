@@ -3,6 +3,7 @@
 import io
 import pathlib
 import time
+import copy
 from abc import ABC, abstractmethod
 from collections import deque
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
@@ -108,7 +109,7 @@ class BaseModel(pl.LightningModule):
 
         # Wrap the env if necessary
         self.env = self._wrap_env(self.env)
-        self.eval_env = self._wrap_env(eval_env)
+        self.eval_env = self._wrap_env(self.eval_env)
 
         self.observation_space = self.env.observation_space
         self.action_space = self.env.action_space

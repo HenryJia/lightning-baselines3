@@ -6,6 +6,23 @@ from gym import spaces
 from torch.nn import functional as F
 
 
+def is_image_space_channels_first(observation_space: spaces.Box) -> bool:
+    """
+    Check if an image observation space (see ``is_image_space``)
+    is channels-first (CxHxW, True) or channels-last (HxWxC, False).
+
+    Use a heuristic that channel dimension is the smallest of the three.
+    If second dimension is smallest, raise an exception (no support).
+
+    :param observation_space:
+    :return: True if observation space is channels-first image, False if channels-last.
+    """
+    smallest_dimension = np.argmin(observation_space.shape).item()
+    if smallest_dimension == 1:
+        warnings.warn("Treating image space as channels-last, while second dimension was smallest of the three.")
+    return smallest_dimension == 0
+
+
 def is_image_space(observation_space: spaces.Space, channels_last: bool = True, check_channels: bool = False) -> bool:
     """
     Check if a observation space has the shape, limits and dtype
@@ -15,11 +32,11 @@ def is_image_space(observation_space: spaces.Space, channels_last: bool = True, 
 
     Valid images: RGB, RGBD, GrayScale with values in [0, 255]
 
-    :param observation_space: (spaces.Space)
-    :param channels_last: (bool)
-    :param check_channels: (bool) Whether to do or not the check for the number of channels.
+    :param observation_space:
+    :param channels_last:
+    :param check_channels: Whether to do or not the check for the number of channels.
         e.g., with frame-stacking, the observation space may have more channels than expected.
-    :return: (bool)
+    :return:
     """
     if isinstance(observation_space, spaces.Box) and len(observation_space.shape) == 3:
         # Check the type

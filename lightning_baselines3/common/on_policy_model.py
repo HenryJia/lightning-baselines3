@@ -60,7 +60,7 @@ class OnPolicyModel(BaseModel):
         monitor_wrapper: bool = True,
         seed: Optional[int] = None,
     ):
-        super(OnPolicyAlgorithm, self).__init__(
+        super(OnPolicyModel, self).__init__(
             env=env,
             use_sde=use_sde,
             sde_sample_freq=sde_sample_freq,
