@@ -88,7 +88,7 @@ class OnPolicyModel(BaseModel):
         )
 
     def on_policy_dataloader(self):
-        
+        pass
 
     def collect_rollout(self):
         assert self._last_obs is not None, "No previous observation was provided"
