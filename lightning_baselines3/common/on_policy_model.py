@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 
 from lightning_baselines3.common.base_model import BaseModel
 from lightning_baselines3.common.buffers import RolloutBuffer
-from lightning_baselines3.common.type_aliases import GymEnv
+from lightning_baselines3.common.type_aliases import GymEnv, RolloutBufferSamples
 from lightning_baselines3.common.utils import safe_mean
 from lightning_baselines3.common.vec_env import VecEnv
 
@@ -21,8 +21,7 @@ class OnPolicyModel(BaseModel):
     The base for On-Policy algorithms (ex: A2C/PPO).
 
     :param env: (Gym environment or str) The environment to learn from (if registered in Gym, can be str)
-    :param n_steps: (int) The number of steps to run for each environment per update
-        (i.e. batch size is n_steps * n_env where n_env is number of environment copies running in parallel)
+    :param buffer_length: (int) Length of the buffer and the number of steps to run for each environment per update
     :param gamma: (float) Discount factor
     :param gae_lambda: (float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator.
         Equivalent to classic advantage when set to 1.
@@ -46,8 +45,10 @@ class OnPolicyModel(BaseModel):
     def __init__(
         self,
         env: Union[GymEnv, str],
-        n_steps: int,
+        buffer_length: int,
+        num_rollouts: int,
         batch_size: int,
+        epochs_per_rollout: int,
         gamma: float,
         gae_lambda: float,
         ent_coef: float,
@@ -69,8 +70,10 @@ class OnPolicyModel(BaseModel):
             seed=seed,
         )
 
-        self.n_steps = n_steps
+        self.buffer_length = buffer_length
+        self.num_rollouts = num_rollouts
         self.batch_size = batch_size
+        self.epochs_per_rollout = epochs_per_rollout
         self.gamma = gamma
         self.gae_lambda = gae_lambda
         self.ent_coef = ent_coef
@@ -79,7 +82,7 @@ class OnPolicyModel(BaseModel):
         self.buffer_grads = buffer_grads
 
         self.rollout_buffer = RolloutBuffer(
-            n_steps,
+            buffer_length,
             self.observation_space,
             self.action_space,
             gamma=self.gamma,
@@ -87,17 +90,35 @@ class OnPolicyModel(BaseModel):
             n_envs=self.n_envs,
         )
 
-    def on_policy_dataloader(self):
-        pass
 
-    def collect_rollout(self):
+    def train_dataloader(self):
+        def loader() -> RolloutBufferSamples:
+            for i in range(self.num_rollouts):
+                experiences = self.collect_rollout(self.env, self.rollout_buffer)
+                observations, actions, old_values, old_log_prob, advantages, returns = experiences
+                for j in range(self.epochs_per_rollout):
+                    k = 0
+                    perm = torch.randperm(self.buffer_length, device=observations.device)
+                    while k < self.buffer_length:
+                        batch_size = min(self.buffer_length - k, self.batch_size)
+                        yield RolloutBufferSamples(
+                            observations[perm[k:k+batch_size]],
+                            actions[perm[k:k+batch_size]],
+                            values[perm[k:k+batch_size]],
+                            log_prob[perm[k:k+batch_size]],
+                            advantage[perm[k:k+batch_size]],
+                            returns[perm[k:k+batch_size]])
+        return loader
+
+
+    def collect_rollouts(self, env: VecEnv, rollout_buffer: RolloutBuffer) -> RolloutBufferSamples:
         assert self._last_obs is not None, "No previous observation was provided"
         # Sample new weights for the state dependent exploration
         if self.use_sde:
             self.reset_noise(env.num_envs)
 
-        for n_steps in range(n_rollout_steps):
-            if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
+        for buffer_length in range(n_rollout_steps):
+            if self.use_sde and self.sde_sample_freq > 0 and buffer_length % self.sde_sample_freq == 0:
                 # Sample a new noise matrix
                 self.reset_noise(env.num_envs)
 
@@ -124,8 +145,8 @@ class OnPolicyModel(BaseModel):
             if isinstance(self.action_space, gym.spaces.Discrete):
                 # Reshape in case of discrete action
                 actions = actions.reshape(-1, 1)
-            self.rollout_buffer.add(self._last_obs, actions, rewards, self._last_dones, values, log_probs)
+            rollout_buffer.add(self._last_obs, actions, rewards, self._last_dones, values, log_probs)
             self._last_obs = new_obs
             self._last_dones = dones
 
-        return self.rollout_buffer.finalize(values, dones)
+        return rollout_buffer.finalize(values, dones)

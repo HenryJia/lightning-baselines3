@@ -70,6 +70,7 @@ class BaseModel(pl.LightningModule):
         self,
         env: Union[GymEnv, str],
         eval_env: Optional[GymEnv] = None,
+        num_eval_episodes: int = 1,
         verbose: int = 0,
         support_multi_env: bool = False,
         create_eval_env: bool = False,
@@ -82,15 +83,13 @@ class BaseModel(pl.LightningModule):
         if verbose > 0:
             print(f"Using {self.device} device")
 
-        # get VecNormalize object if needed
-        self._vec_normalize_env = unwrap_vec_normalize(env)
+        self.num_eval_episodes = num_eval_episodes
         self.verbose = verbose
-        # Used for updating schedules
 
         self._last_obs = None  # type: Optional[np.ndarray]
         self._last_dones = None  # type: Optional[np.ndarray]
+
         # When using VecNormalize:
-        self._last_original_obs = None  # type: Optional[np.ndarray]
         self._episode_num = 0
         # Used for gSDE only
         self.use_sde = use_sde
@@ -123,8 +122,83 @@ class BaseModel(pl.LightningModule):
         if self.use_sde and not isinstance(self.observation_space, gym.spaces.Box):
             raise ValueError("generalized State-Dependent Exploration (gSDE) can only be used with continuous actions.")
 
+        self.reset()
 
-    def reset(self): # Reset the environment
+
+    def evaluate(self, deterministic: bool = True, render: bool = False) -> Tuple[List[float], List[int]]]:
+        """
+        Evaluate the model with eval_env
+
+        :param deterministic: (bool) Whether to evaluate deterministically
+        :return: (torch.Tensor) The predicted action and state
+        """
+        if isinstance(self.eval_env, VecEnv):
+            assert self.eval_env.num_env, "Cannot run eval_env in parallel. eval_env.num_env must equal 1"
+
+        if not is_wrapped(env, Monitor) and self.verbose:
+            warnings.warn(
+                "Evaluation environment is not wrapped with a ``Monitor`` wrapper. "
+                "This may result in reporting modified episode lengths and rewards, if other wrappers happen to modify these. "
+                "Consider wrapping environment first with ``Monitor`` wrapper.",
+                UserWarning,
+            )
+
+        episode_rewards, episode_lengths = [], []
+
+        not_reseted = True
+        while len(episode_rewards) < self.num_eval_episodes:
+            done = False
+            state = None
+            episode_rewards += [0.0]
+            episode_lengths += [0]
+
+            # Number of loops here might differ from true episodes
+            # played, if underlying wrappers modify episode lengths.
+            # Avoid double reset, as VecEnv are reset automatically.
+            if not isinstance(env, VecEnv) or not_reseted:
+                obs = env.reset()
+                not_reseted = False
+
+            while not done:
+                obs = torch.tensor(obs).to(self.device)[None]
+                dist, state = self(obs, state=state)
+                if deterministic:
+                    action = dist.mean
+                else:
+                    action = dist.sample()
+                action = action.cpu().numpy()[0]
+
+                obs, reward, done, info = env.step(action)
+                episode_rewards[-1] += reward
+                episode_lengths[-1] += 1
+
+                if render:
+                    env.render()
+
+            if is_wrapped(env, Monitor):
+                # Do not trust "done" with episode endings.
+                # Remove vecenv stacking (if any)
+                if isinstance(env, VecEnv):
+                    info = info[0]
+                if "episode" in info.keys():
+                    # Monitor wrapper includes "episode" key in info if environment
+                    # has been wrapped with it. Use those rewards instead.
+                    episode_rewards[-1] = info["episode"]["r"]
+                    episode_lengths[-1] = info["episode"]["l"]
+
+        return episode_rewards, episode_lengths
+
+
+    def training_epoch_end(self, outputs):
+        """" Run the evaluation function """
+        rewards, lengths = self.evaluate()
+        return {'log': {'val_reward_mean': np.mean(rewards),
+                        'val_reward_std': np.std(rewards),
+                        'val_lengths_mean': np.mean(lengths),
+                        'val_lengths_std': np.std(lengths)}}
+
+
+    def reset(self) -> None: # Reset the environment
         self._last_obs = self.env.reset()
 
 

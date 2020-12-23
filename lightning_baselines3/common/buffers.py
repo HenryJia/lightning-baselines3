@@ -373,6 +373,3 @@ class RolloutBuffer(BaseBuffer):
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True
-
-
-

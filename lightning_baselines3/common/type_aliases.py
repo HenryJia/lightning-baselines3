@@ -15,6 +15,7 @@ TensorDict = Dict[str, torch.Tensor]
 OptimizerStateDict = Dict[str, Any]
 
 
+
 class RolloutBufferSamples(NamedTuple):
     observations: torch.Tensor
     actions: torch.Tensor
@@ -24,16 +25,10 @@ class RolloutBufferSamples(NamedTuple):
     returns: torch.Tensor
 
 
+
 class ReplayBufferSamples(NamedTuple):
     observations: torch.Tensor
     actions: torch.Tensor
     next_observations: torch.Tensor
     dones: torch.Tensor
     rewards: torch.Tensor
-
-
-class RolloutReturn(NamedTuple):
-    episode_reward: float
-    episode_timesteps: int
-    n_episodes: int
-    continue_training: bool
