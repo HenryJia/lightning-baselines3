@@ -5,11 +5,12 @@ from setuptools import setup
 setup(
     name='lightning_baselines3',
     packages=['lightning_baselines3'],
+    python_requires=">=3.6",
     install_requires=[
         "gym>=0.17",
-        "numpy",
-        "torch>=1.4.0",
-        "pytorch_lightning>=1.0.0",
+        "numpy>=1.16.6",
+        "torch>=1.3",
+        "pytorch_lightning>=1.1.0",
     ],
     extras_require={
         "tests": [
