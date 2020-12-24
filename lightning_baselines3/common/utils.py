@@ -159,7 +159,7 @@ def get_latest_run_id(log_path: Optional[str] = None, log_name: str = "") -> int
     """
     max_run_id = 0
     for path in glob.glob(f"{log_path}/{log_name}_[0-9]*"):
-        file_name = patorch.split(os.sep)[-1]
+        file_name = path.split(os.sep)[-1]
         ext = file_name.split("_")[-1]
         if log_name == "_".join(file_name.split("_")[:-1]) and ext.isdigit() and int(ext) > max_run_id:
             max_run_id = int(ext)

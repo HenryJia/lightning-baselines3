@@ -312,7 +312,7 @@ class RolloutBuffer(BaseBuffer):
 
         """
         assert self.full, "Can only finalize RolloutBuffer when RolloutBuffer is full"
-        assert next_value.device == self.values.device, 'All value function outputs must be on same device'
+        assert last_value.device == self.values.device, 'All value function outputs must be on same device'
 
         self.observations = np.concatenate(self.observations, axis=0)
         self.actions = np.concatenate(self.actions, axis=0)
@@ -326,17 +326,16 @@ class RolloutBuffer(BaseBuffer):
         # is consistent for computing advantages and returns
         self.observations = self.as_tensor(self.observations)
         self.actions = self.as_tensor(self.actions)
-        self.rewards = self.as_tensor(self.rewards).to(device=next_value.device)
-        self.dones = self.as_tensor(self.dones).to(device=next_value.device)
-        last_dones = self.as_tensor(last_dones).to(device=next_value.device)
+        self.rewards = self.as_tensor(self.rewards).to(device=last_value.device)
+        self.dones = self.as_tensor(self.dones).to(device=last_value.device)
+        last_dones = self.as_tensor(last_dones).to(device=last_value.device)
 
         last_gae_lam = 0
         advantages = torch.zeros_like(self.rewards)
+        next_non_terminal = 1.0 - last_dones
+        next_value = last_value
         for step in reversed(range(self.buffer_size)):
-            if step == self.buffer_size - 1:
-                next_non_terminal = 1.0 - last_dones
-                next_value = last_value
-            else:
+            if step < self.buffer_size - 1:
                 next_non_terminal = 1.0 - self.dones[step + 1]
                 next_value = self.values[step + 1]
             delta = self.rewards[step] + self.gamma * next_value * next_non_terminal - self.values[step]
@@ -344,7 +343,7 @@ class RolloutBuffer(BaseBuffer):
             advantages[step] = last_gae_lam
         returns = advantages + self.values
 
-        return RolloutBufferSamples(self.observations, self.actions, self.values, self.log_prob, advantage, returns)
+        return RolloutBufferSamples(self.observations, self.actions, self.values, self.log_prob, advantages, returns)
 
 
     def add(

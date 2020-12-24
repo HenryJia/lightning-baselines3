@@ -102,9 +102,9 @@ class OnPolicyModel(BaseModel):
                         yield RolloutBufferSamples(
                             observations[perm[k:k+batch_size]],
                             actions[perm[k:k+batch_size]],
-                            values[perm[k:k+batch_size]],
-                            log_prob[perm[k:k+batch_size]],
-                            advantage[perm[k:k+batch_size]],
+                            old_values[perm[k:k+batch_size]],
+                            old_log_prob[perm[k:k+batch_size]],
+                            advantages[perm[k:k+batch_size]],
                             returns[perm[k:k+batch_size]])
         return loader
 
@@ -115,8 +115,8 @@ class OnPolicyModel(BaseModel):
         if self.use_sde:
             self.reset_noise(env.num_envs)
 
-        for buffer_length in range(n_rollout_steps):
-            if self.use_sde and self.sde_sample_freq > 0 and buffer_length % self.sde_sample_freq == 0:
+        for i in range(self.num_rollouts):
+            if self.use_sde and self.sde_sample_freq > 0 and i % self.sde_sample_freq == 0:
                 # Sample a new noise matrix
                 self.reset_noise(env.num_envs)
 
