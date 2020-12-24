@@ -3,21 +3,33 @@ import numpy as np
 import pytest
 from gym import spaces
 
+import torch
+
 from lightning_baselines3.common.on_policy_model import OnPolicyModel
 
 from ..utils.env_checker import check_env
 
-@pytest.mark.parametrize("env_id", ["CartPole-v0", "Pendulum-v0"])
+
+class EmptyModel(OnPolicyModel):
+    def forward(self, x):
+        return torch.distributions.Bernoulli(probs=torch.zeros_like(x) + 0.5)
+
+    def training_step(self, x):
+        return 0
+
+@pytest.mark.parametrize("env_id", ["CartPole-v0"])
 def test_on_policy_model(env_id):
     """
     Check that environmnent integrated in Gym pass the test.
 
     :param env_id: (str)
     """
-    model = OnPolicyModel(
+    model = EmptyModel(
         env_id,
-        n_steps=100,
+        buffer_length=512,
+        num_rollouts=1,
         batch_size=32,
+        epochs_per_rollout=10,
         gamma=0.9,
         gae_lambda=0.95,
         ent_coef=0.1,
@@ -26,6 +38,5 @@ def test_on_policy_model(env_id):
         use_sde=False,
         sde_sample_freq=-1,
         buffer_grads=False,
-        create_eval_env=False,
         monitor_wrapper=True,
         seed=None)

@@ -57,17 +57,14 @@ class OnPolicyModel(BaseModel):
         use_sde: bool,
         sde_sample_freq: int,
         buffer_grads: bool = False,
-        create_eval_env: bool = False,
-        monitor_wrapper: bool = True,
-        seed: Optional[int] = None,
+        **kwargs
     ):
         super(OnPolicyModel, self).__init__(
             env=env,
             use_sde=use_sde,
             sde_sample_freq=sde_sample_freq,
-            create_eval_env=create_eval_env,
             support_multi_env=True,
-            seed=seed,
+            **kwargs
         )
 
         self.buffer_length = buffer_length
@@ -101,6 +98,7 @@ class OnPolicyModel(BaseModel):
                     perm = torch.randperm(self.buffer_length, device=observations.device)
                     while k < self.buffer_length:
                         batch_size = min(self.buffer_length - k, self.batch_size)
+                        k += batch_size
                         yield RolloutBufferSamples(
                             observations[perm[k:k+batch_size]],
                             actions[perm[k:k+batch_size]],

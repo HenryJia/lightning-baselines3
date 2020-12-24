@@ -55,8 +55,6 @@ class BaseModel(pl.LightningModule):
     :param verbose: (int) The verbosity level: 0 none, 1 training information, 2 debug
     :param support_multi_env: (bool) Whether the algorithm supports training
         with multiple environments (as in A2C)
-    :param create_eval_env: (bool) Whether to create a second environment that will be
-        used for evaluating the agent periodically. (Only available when passing string for the environment)
     :param monitor_wrapper: (bool) When creating an environment, whether to wrap it
         or not in a Monitor wrapper.
     :param seed: (Optional[int]) Seed for the pseudo random generators
@@ -69,11 +67,10 @@ class BaseModel(pl.LightningModule):
     def __init__(
         self,
         env: Union[GymEnv, str],
-        eval_env: Optional[GymEnv] = None,
+        eval_env: Optional[Union[GymEnv, str]] = None,
         num_eval_episodes: int = 1,
         verbose: int = 0,
         support_multi_env: bool = False,
-        create_eval_env: bool = False,
         monitor_wrapper: bool = True,
         seed: Optional[int] = None,
         use_sde: bool = False,
@@ -125,7 +122,7 @@ class BaseModel(pl.LightningModule):
         self.reset()
 
 
-    def evaluate(self, deterministic: bool = True, render: bool = False) -> Tuple[List[float], List[int]]]:
+    def evaluate(self, deterministic: bool = True, render: bool = False) -> Tuple[List[float], List[int]]:
         """
         Evaluate the model with eval_env
 
