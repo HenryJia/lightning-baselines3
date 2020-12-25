@@ -9,6 +9,7 @@ setup(
     install_requires=[
         "gym>=0.17",
         "numpy>=1.16.6",
+        "pandas",
         "torch>=1.3",
         "pytorch_lightning>=1.1.0",
     ],
