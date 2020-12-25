@@ -4,6 +4,7 @@ import io
 import pathlib
 import time
 import copy
+import warnings
 from abc import ABC, abstractmethod
 from collections import deque
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
@@ -15,7 +16,6 @@ from torch import nn
 import pytorch_lightning as pl
 
 from lightning_baselines3.common.monitor import Monitor
-from lightning_baselines3.common.preprocessing import is_image_space
 from lightning_baselines3.common.type_aliases import GymEnv
 from lightning_baselines3.common.utils import (
     check_for_correct_spaces,
@@ -23,10 +23,11 @@ from lightning_baselines3.common.utils import (
     set_random_seed,
     update_learning_rate,
 )
-from lightning_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecNormalize, VecTransposeImage, unwrap_vec_normalize
+from lightning_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecNormalize, VecTransposeImage
+from lightning_baselines3.common.vec_env import is_wrapped, unwrap_vec_normalize, wrap_env, is_image_space
 
 
-def maybe_make_env(env: Union[GymEnv, str, None], monitor_wrapper: bool, verbose: int) -> Optional[GymEnv]:
+def maybe_make_env(env: Union[GymEnv, str], monitor_wrapper: bool, verbose: int) -> Optional[GymEnv]:
     """If env is a string, make the environment; otherwise, return env.
 
     :param env: (Union[GymEnv, str, None]) The environment to learn from.
@@ -42,6 +43,7 @@ def maybe_make_env(env: Union[GymEnv, str, None], monitor_wrapper: bool, verbose
             env = Monitor(env, filename=None)
 
     return env
+
 
 
 class BaseModel(pl.LightningModule):
@@ -104,8 +106,8 @@ class BaseModel(pl.LightningModule):
             self.set_random_seed(self.seed)
 
         # Wrap the env if necessary
-        self.env = self._wrap_env(self.env)
-        self.eval_env = self._wrap_env(self.eval_env)
+        self.env = wrap_env(self.env, self.verbose)
+        self.eval_env = wrap_env(self.eval_env, self.verbose)
 
         self.observation_space = self.env.observation_space
         self.action_space = self.env.action_space
@@ -152,8 +154,8 @@ class BaseModel(pl.LightningModule):
             # Number of loops here might differ from true episodes
             # played, if underlying wrappers modify episode lengths.
             # Avoid double reset, as VecEnv are reset automatically.
-            if not isinstance(env, VecEnv) or not_reseted:
-                obs = env.reset()
+            if not isinstance(self.eval_env, VecEnv) or not_reseted:
+                obs = self.eval_env.reset()
                 not_reseted = False
 
             while not done:
@@ -165,17 +167,17 @@ class BaseModel(pl.LightningModule):
                     action = dist.sample()
                 action = action.cpu().numpy()[0]
 
-                obs, reward, done, info = env.step(action)
+                obs, reward, done, info = self.eval_env.step(action)
                 episode_rewards[-1] += reward
                 episode_lengths[-1] += 1
 
                 if render:
-                    env.render()
+                    self.eval_env.render()
 
             if is_wrapped(self.eval_env, Monitor):
                 # Do not trust "done" with episode endings.
                 # Remove vecenv stacking (if any)
-                if isinstance(env, VecEnv):
+                if isinstance(self.eval_env, VecEnv):
                     info = info[0]
                 if "episode" in info.keys():
                     # Monitor wrapper includes "episode" key in info if environment
@@ -197,19 +199,6 @@ class BaseModel(pl.LightningModule):
 
     def reset(self) -> None: # Reset the environment
         self._last_obs = self.env.reset()
-
-
-    def _wrap_env(self, env: GymEnv) -> VecEnv:
-        if not isinstance(env, VecEnv):
-            if self.verbose >= 1:
-                print("Wrapping the env in a DummyVecEnv.")
-            env = DummyVecEnv([lambda: env])
-
-        if is_image_space(env.observation_space) and not isinstance(env, VecTransposeImage):
-            if self.verbose >= 1:
-                print("Wrapping the env in a VecTransposeImage.")
-            env = VecTransposeImage(env)
-        return env
 
 
     def set_random_seed(self, seed: Optional[int] = None) -> None:

@@ -1,7 +1,7 @@
 import numpy as np
 from gym import spaces
 
-from lightning_baselines3.common.preprocessing import is_image_space
+from lightning_baselines3.common.vec_env.utils import is_image_space
 from lightning_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvStepReturn, VecEnvWrapper
 
 

@@ -11,7 +11,7 @@ try:
 except ImportError:
     psutil = None
 
-from lightning_baselines3.common.preprocessing import get_action_dim, get_obs_shape
+from lightning_baselines3.common.utils import get_action_dim, get_obs_shape
 from lightning_baselines3.common.type_aliases import ReplayBufferSamples, RolloutBufferSamples
 from lightning_baselines3.common.vec_env import VecNormalize
 

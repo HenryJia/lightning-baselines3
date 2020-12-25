@@ -5,7 +5,7 @@ import numpy as np
 from gym import spaces
 
 from lightning_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvWrapper
-from lightning_baselines3.common.preprocessing import is_image_space, is_image_space_channels_first
+from lightning_baselines3.common.vec_env.utils import is_image_space, is_image_space_channels_first
 
 class VecFrameStack(VecEnvWrapper):
     """
@@ -13,7 +13,7 @@ class VecFrameStack(VecEnvWrapper):
 
     Dimension to stack over is either first (channels-first) or
     last (channels-last), which is detected automatically using
-    ``common.preprocessing.is_image_space_channels_first`` if
+    ``common.utils.is_image_space_channels_first`` if
     observation is an image space.
 
     :param venv: the vectorized environment to wrap
