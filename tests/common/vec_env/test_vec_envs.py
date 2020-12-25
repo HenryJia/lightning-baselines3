@@ -7,7 +7,6 @@ import gym
 import numpy as np
 import pytest
 
-from lightning_baselines3.common.monitor import Monitor
 from lightning_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecFrameStack, VecNormalize
 
 N_ENVS = 3

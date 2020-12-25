@@ -4,6 +4,7 @@ Helpers for dealing with vectorized environments.
 
 from typing import Optional, Type, Union
 from collections import OrderedDict
+import warnings
 
 import gym
 from gym import spaces

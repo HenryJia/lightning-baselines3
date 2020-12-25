@@ -1,13 +1,8 @@
-import gym
-import numpy as np
 import pytest
-from gym import spaces
 
 import torch
 
 from lightning_baselines3.common.on_policy_model import OnPolicyModel
-
-from ..utils.env_checker import check_env
 
 
 class EmptyModel(OnPolicyModel):
@@ -16,6 +11,7 @@ class EmptyModel(OnPolicyModel):
 
     def training_step(self, x):
         return 0
+
 
 @pytest.mark.parametrize("env_id", ["CartPole-v0"])
 def test_on_policy_model(env_id):
