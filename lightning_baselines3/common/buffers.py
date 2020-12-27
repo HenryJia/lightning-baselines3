@@ -312,7 +312,6 @@ class RolloutBuffer(BaseBuffer):
 
         """
         assert self.full, "Can only finalize RolloutBuffer when RolloutBuffer is full"
-        assert last_value.device == self.values.device, 'All value function outputs must be on same device'
 
         self.observations = np.concatenate(self.observations, axis=0)
         self.actions = np.concatenate(self.actions, axis=0)
@@ -321,14 +320,16 @@ class RolloutBuffer(BaseBuffer):
         self.values = torch.cat(self.values, dim=0)
         self.log_probs = torch.cat(self.log_probs, dim=0)
 
+        assert last_value.device == self.values.device, 'All value function outputs must be on same device'
+
         # Move everything to torch
         # Lightning can handle moving things to device to some extent, but we need to make sure everything
         # is consistent for computing advantages and returns
-        self.observations = self.as_tensor(self.observations)
-        self.actions = self.as_tensor(self.actions)
-        self.rewards = self.as_tensor(self.rewards).to(device=last_value.device)
-        self.dones = self.as_tensor(self.dones).to(device=last_value.device)
-        last_dones = self.as_tensor(last_dones).to(device=last_value.device)
+        self.observations = torch.as_tensor(self.observations)
+        self.actions = torch.as_tensor(self.actions)
+        self.rewards = torch.as_tensor(self.rewards).to(device=last_value.device)
+        self.dones = torch.as_tensor(self.dones).to(device=last_value.device, dtype=torch.int32)
+        last_dones = torch.as_tensor(last_dones).to(device=last_value.device, dtype=torch.int32)
 
         last_gae_lam = 0
         advantages = torch.zeros_like(self.rewards)
@@ -343,7 +344,7 @@ class RolloutBuffer(BaseBuffer):
             advantages[step] = last_gae_lam
         returns = advantages + self.values
 
-        return RolloutBufferSamples(self.observations, self.actions, self.values, self.log_prob, advantages, returns)
+        return RolloutBufferSamples(self.observations, self.actions, self.values, self.log_probs, advantages, returns)
 
 
     def add(

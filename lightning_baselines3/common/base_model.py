@@ -78,15 +78,12 @@ class BaseModel(pl.LightningModule):
         use_sde: bool = False,
         sde_sample_freq: int = -1,
     ):
-
+        super().__init__()
         if verbose > 0:
             print(f"Using {self.device} device")
 
         self.num_eval_episodes = num_eval_episodes
         self.verbose = verbose
-
-        self._last_obs = None  # type: Optional[np.ndarray]
-        self._last_dones = None  # type: Optional[np.ndarray]
 
         # When using VecNormalize:
         self._episode_num = 0
@@ -132,7 +129,7 @@ class BaseModel(pl.LightningModule):
         :return: (torch.Tensor) The predicted action and state
         """
         if isinstance(self.eval_env, VecEnv):
-            assert self.eval_env.num_env, "Cannot run eval_env in parallel. eval_env.num_env must equal 1"
+            assert self.eval_env.num_envs == 1, "Cannot run eval_env in parallel. eval_env.num_env must equal 1"
 
         if not is_wrapped(self.eval_env, Monitor) and self.verbose:
             warnings.warn(
@@ -147,7 +144,6 @@ class BaseModel(pl.LightningModule):
         not_reseted = True
         while len(episode_rewards) < self.num_eval_episodes:
             done = False
-            state = None
             episode_rewards += [0.0]
             episode_lengths += [0]
 
@@ -159,13 +155,14 @@ class BaseModel(pl.LightningModule):
                 not_reseted = False
 
             while not done:
-                obs = torch.tensor(obs).to(self.device)[None]
-                dist, state = self(obs, state=state)
-                if deterministic:
-                    action = dist.mean
-                else:
-                    action = dist.sample()
-                action = action.cpu().numpy()[0]
+                with torch.no_grad():
+                    obs = torch.tensor(obs).to(self.device)[None]
+                    action = self.predict(obs, deterministic=deterministic)
+
+                if isinstance(self.action_space, gym.spaces.Box):
+                    action = np.clip(action, self.action_space.low, self.action_space.high)
+                elif isinstance(self.action_space, gym.spaces.Discrete):
+                    action = action.astype(np.int32)
 
                 obs, reward, done, info = self.eval_env.step(action)
                 episode_rewards[-1] += reward
@@ -191,14 +188,17 @@ class BaseModel(pl.LightningModule):
     def training_epoch_end(self, outputs):
         """" Run the evaluation function """
         rewards, lengths = self.evaluate()
-        return {'log': {'val_reward_mean': np.mean(rewards),
-                        'val_reward_std': np.std(rewards),
-                        'val_lengths_mean': np.mean(lengths),
-                        'val_lengths_std': np.std(lengths)}}
+        self.log_dict({
+            'val_reward_mean': np.mean(rewards),
+            'val_reward_std': np.std(rewards),
+            'val_lengths_mean': np.mean(lengths),
+            'val_lengths_std': np.std(lengths)},
+            prog_bar=True, logger=True)
 
 
     def reset(self) -> None: # Reset the environment
         self._last_obs = self.env.reset()
+        self._last_dones = np.zeros((self.env.num_envs,), dtype=np.bool)  # type: Optional[np.ndarray]
 
 
     def set_random_seed(self, seed: Optional[int] = None) -> None:

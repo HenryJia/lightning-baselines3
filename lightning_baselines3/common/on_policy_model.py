@@ -89,36 +89,19 @@ class OnPolicyModel(BaseModel):
 
 
     def train_dataloader(self):
-        def loader() -> RolloutBufferSamples:
-            for i in range(self.num_rollouts):
-                experiences = self.collect_rollout(self.env, self.rollout_buffer)
-                observations, actions, old_values, old_log_prob, advantages, returns = experiences
-                for j in range(self.epochs_per_rollout):
-                    k = 0
-                    perm = torch.randperm(self.buffer_length, device=observations.device)
-                    while k < self.buffer_length:
-                        batch_size = min(self.buffer_length - k, self.batch_size)
-                        k += batch_size
-                        yield RolloutBufferSamples(
-                            observations[perm[k:k+batch_size]],
-                            actions[perm[k:k+batch_size]],
-                            old_values[perm[k:k+batch_size]],
-                            old_log_prob[perm[k:k+batch_size]],
-                            advantages[perm[k:k+batch_size]],
-                            returns[perm[k:k+batch_size]])
-        return loader
+        return OnPolicyDataloader(self)
 
 
-    def collect_rollouts(self, env: VecEnv, rollout_buffer: RolloutBuffer) -> RolloutBufferSamples:
+    def collect_rollouts(self) -> RolloutBufferSamples:
         assert self._last_obs is not None, "No previous observation was provided"
         # Sample new weights for the state dependent exploration
         if self.use_sde:
-            self.reset_noise(env.num_envs)
+            self.reset_noise(self.env.num_envs)
 
-        for i in range(self.num_rollouts):
+        for i in range(self.buffer_length):
             if self.use_sde and self.sde_sample_freq > 0 and i % self.sde_sample_freq == 0:
                 # Sample a new noise matrix
-                self.reset_noise(env.num_envs)
+                self.reset_noise(self.env.num_envs)
 
             with ExitStack() as stack:
                 if not self.buffer_grads:
@@ -126,7 +109,9 @@ class OnPolicyModel(BaseModel):
 
                 # Convert to pytorch tensor, let Lightning take care of any GPU transfer
                 obs_tensor = torch.as_tensor(self._last_obs)
-                actions, values, log_probs = self(obs_tensor)
+                dist, values = self(obs_tensor)
+                actions = dist.sample()
+                log_probs = dist.log_prob(actions)
 
             actions = actions.cpu().numpy()
 
@@ -135,16 +120,45 @@ class OnPolicyModel(BaseModel):
             # Clip the actions to avoid out of bound error
             if isinstance(self.action_space, gym.spaces.Box):
                 clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
+            elif isinstance(self.action_space, gym.spaces.Discrete):
+                clipped_actions = actions.astype(np.int32)
 
-            new_obs, rewards, dones, infos = env.step(clipped_actions)
+            new_obs, rewards, dones, infos = self.env.step(clipped_actions)
 
             # Give access to local variables
 
             if isinstance(self.action_space, gym.spaces.Discrete):
                 # Reshape in case of discrete action
                 actions = actions.reshape(-1, 1)
-            rollout_buffer.add(self._last_obs, actions, rewards, self._last_dones, values, log_probs)
+            self.rollout_buffer.add(self._last_obs, actions, rewards, self._last_dones, values, log_probs)
             self._last_obs = new_obs
             self._last_dones = dones
 
-        return rollout_buffer.finalize(values, dones)
+        samples = self.rollout_buffer.finalize(values, dones)
+        self.rollout_buffer.reset()
+        return samples
+
+
+
+class OnPolicyDataloader:
+    def __init__(self, model: OnPolicyModel):
+        self.model = model
+
+
+    def __iter__(self):
+        for i in range(self.model.num_rollouts):
+            experiences = self.model.collect_rollouts()
+            observations, actions, old_values, old_log_prob, advantages, returns = experiences
+            for j in range(self.model.epochs_per_rollout):
+                k = 0
+                perm = torch.randperm(self.model.buffer_length, device=observations.device)
+                while k < self.model.buffer_length:
+                    batch_size = min(self.model.buffer_length - k, self.model.batch_size)
+                    yield RolloutBufferSamples(
+                        observations[perm[k:k+batch_size]],
+                        actions[perm[k:k+batch_size]],
+                        old_values[perm[k:k+batch_size]],
+                        old_log_prob[perm[k:k+batch_size]],
+                        advantages[perm[k:k+batch_size]],
+                        returns[perm[k:k+batch_size]])
+                    k += batch_size
