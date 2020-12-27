@@ -7,7 +7,7 @@ from torch import nn
 
 import pytorch_lightning as pl
 
-from lightning_baselines3.common.on_policy_model import OnPolicyModel
+from lightning_baselines3.on_policy_models.on_policy_model import OnPolicyModel
 
 
 
@@ -33,6 +33,7 @@ class DummyModel(OnPolicyModel):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
+
 
 
 @pytest.mark.parametrize("env_id", ["CartPole-v0"])
