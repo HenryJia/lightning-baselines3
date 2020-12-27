@@ -9,8 +9,8 @@ import torch
 import pytorch_lightning as pl
 
 from lightning_baselines3.common.base_model import BaseModel
-from lightning_baselines3.common.buffers import RolloutBuffer
-from lightning_baselines3.common.type_aliases import GymEnv, RolloutBufferSamples
+from lightning_baselines3.common.buffers import RolloutBuffer, RolloutBufferSamples
+from lightning_baselines3.common.type_aliases import GymEnv
 from lightning_baselines3.common.utils import safe_mean
 from lightning_baselines3.common.vec_env import VecEnv
 
@@ -51,12 +51,8 @@ class OnPolicyModel(BaseModel):
         epochs_per_rollout: int,
         gamma: float,
         gae_lambda: float,
-        ent_coef: float,
-        vf_coef: float,
-        max_grad_norm: float,
         use_sde: bool,
         sde_sample_freq: int,
-        buffer_grads: bool = False,
         **kwargs
     ):
         super(OnPolicyModel, self).__init__(
@@ -73,10 +69,6 @@ class OnPolicyModel(BaseModel):
         self.epochs_per_rollout = epochs_per_rollout
         self.gamma = gamma
         self.gae_lambda = gae_lambda
-        self.ent_coef = ent_coef
-        self.vf_coef = vf_coef
-        self.max_grad_norm = max_grad_norm
-        self.buffer_grads = buffer_grads
 
         self.rollout_buffer = RolloutBuffer(
             buffer_length,
@@ -103,10 +95,7 @@ class OnPolicyModel(BaseModel):
                 # Sample a new noise matrix
                 self.reset_noise(self.env.num_envs)
 
-            with ExitStack() as stack:
-                if not self.buffer_grads:
-                    stack.enter_context(torch.no_grad())
-
+            with torch.no_grad():
                 # Convert to pytorch tensor, let Lightning take care of any GPU transfer
                 obs_tensor = torch.as_tensor(self._last_obs)
                 dist, values = self(obs_tensor)
@@ -148,7 +137,7 @@ class OnPolicyDataloader:
     def __iter__(self):
         for i in range(self.model.num_rollouts):
             experiences = self.model.collect_rollouts()
-            observations, actions, old_values, old_log_prob, advantages, returns = experiences
+            observations, actions, old_values, old_log_probs, advantages, returns = experiences
             for j in range(self.model.epochs_per_rollout):
                 k = 0
                 perm = torch.randperm(self.model.buffer_length, device=observations.device)
@@ -158,7 +147,7 @@ class OnPolicyDataloader:
                         observations[perm[k:k+batch_size]],
                         actions[perm[k:k+batch_size]],
                         old_values[perm[k:k+batch_size]],
-                        old_log_prob[perm[k:k+batch_size]],
+                        old_log_probs[perm[k:k+batch_size]],
                         advantages[perm[k:k+batch_size]],
                         returns[perm[k:k+batch_size]])
                     k += batch_size

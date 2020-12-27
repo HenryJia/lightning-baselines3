@@ -1,5 +1,5 @@
 import warnings
-from typing import Generator, Optional, Union
+from typing import Generator, NamedTuple, Optional, Union
 
 import numpy as np
 import torch
@@ -12,8 +12,19 @@ except ImportError:
     psutil = None
 
 from lightning_baselines3.common.utils import get_action_dim, get_obs_shape
-from lightning_baselines3.common.type_aliases import ReplayBufferSamples, RolloutBufferSamples
+from lightning_baselines3.common.type_aliases import ReplayBufferSamples
 from lightning_baselines3.common.vec_env import VecNormalize
+
+
+
+class RolloutBufferSamples(NamedTuple):
+    observations: torch.Tensor
+    actions: torch.Tensor
+    old_values: torch.Tensor
+    old_log_probs: torch.Tensor
+    advantages: torch.Tensor
+    returns: torch.Tensor
+
 
 
 class BaseBuffer(object):

@@ -51,12 +51,8 @@ def test_on_policy_model(env_id):
         epochs_per_rollout=10,
         gamma=0.9,
         gae_lambda=0.95,
-        ent_coef=0.1,
-        vf_coef=1.0,
-        max_grad_norm=0.5,
         use_sde=False,
         sde_sample_freq=-1,
-        buffer_grads=False,
         monitor_wrapper=True,
         seed=None)
 
