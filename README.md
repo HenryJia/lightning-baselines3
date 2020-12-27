@@ -12,5 +12,5 @@ Note: despite its simplicity of use, Lightning Baselines3 assumes you have some 
 
 | System | |
 | :---: | :---: |
-| Linux py3.{6,7,8,9} | [![Python package](https://github.com/HenryJia/lightning-baselines3/workflows/Python%20package/badge.svg?branch=master&event=push)](https://github.com/HenryJia/lightning-baselines3/actions?query=workflow%3A%22Python+package%22) |
+| Linux py3.{6,7,8} | [![Python package](https://github.com/HenryJia/lightning-baselines3/workflows/Python%20package/badge.svg?branch=master&event=push)](https://github.com/HenryJia/lightning-baselines3/actions?query=workflow%3A%22Python+package%22) |
 
