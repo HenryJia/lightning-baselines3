@@ -65,7 +65,7 @@ class PPO(OnPolicyModel):
         self,
         env: Union[GymEnv, str],
         buffer_length: int = 2048,
-        num_rollouts: int = 1
+        num_rollouts: int = 1,
         batch_size: int = 64,
         epochs_per_rollout: int = 10,
         gamma: float = 0.99,
