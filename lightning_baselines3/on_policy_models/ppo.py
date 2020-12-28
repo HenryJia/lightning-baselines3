@@ -118,13 +118,14 @@ class PPO(OnPolicyModel):
             values = batch.old_values + torch.clamp(values - batch.old_values.detach(), -self.clip_range_vf, self.clip_range_vf)
 
         value_loss = F.mse_loss(batch.returns, values)
+
         entropy_loss = dist.entropy().mean()
         loss = policy_loss + self.value_coef * value_loss + self.entropy_coef * entropy_loss
 
         with torch.no_grad():
             clip_fraction = torch.mean((torch.abs(ratio - 1) > self.clip_range).float())
             approx_kl = torch.mean(batch.old_log_probs - log_probs)
-            explained_var = explained_variance(batch.values, batch.returns)
+            explained_var = explained_variance(batch.old_values, batch.returns)
         self.log_dict({
             'policy_loss': policy_loss,
             'value_loss': value_loss,
@@ -132,4 +133,6 @@ class PPO(OnPolicyModel):
             'clip_fraction': clip_fraction,
             'approx_kl': approx_kl,
             'explained_var': explained_var},
-            prog_bar=True, logger=True)
+            prog_bar=False, logger=True)
+
+        return loss

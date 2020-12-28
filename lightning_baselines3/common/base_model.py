@@ -156,7 +156,7 @@ class BaseModel(pl.LightningModule):
 
             while not done:
                 with torch.no_grad():
-                    obs = torch.tensor(obs).to(self.device)[None]
+                    obs = torch.tensor(obs).to(self.device)
                     action = self.predict(obs, deterministic=deterministic)
 
                 if isinstance(self.action_space, gym.spaces.Box):
