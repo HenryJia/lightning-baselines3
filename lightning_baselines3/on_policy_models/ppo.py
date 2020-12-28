@@ -72,8 +72,8 @@ class PPO(OnPolicyModel):
         gae_lambda: float = 0.95,
         clip_range: float = 0.2,
         clip_range_vf: Optional[float] = None,
-        vf_coef: float = 0.5,
-        ent_coef: float = 0.0,
+        value_coef: float = 0.5,
+        entropy_coef: float = 0.0,
         use_sde: bool = False,
         sde_sample_freq: int = -1,
         target_kl: Optional[float] = None,
@@ -117,13 +117,13 @@ class PPO(OnPolicyModel):
         if self.clip_range_vf:
             values = batch.old_values + torch.clamp(values - batch.old_values.detach(), -self.clip_range_vf, self.clip_range_vf)
 
-        value_loss = F.mse_loss(rollout_data.returns, values)
+        value_loss = F.mse_loss(batch.returns, values)
         entropy_loss = dist.entropy().mean()
         loss = policy_loss + self.value_coef * value_loss + self.entropy_coef * entropy_loss
 
         with torch.no_grad():
             clip_fraction = torch.mean((torch.abs(ratio - 1) > self.clip_range).float())
-            approx_kl = torch.mean(batch.old_log_prob - log_prob)
+            approx_kl = torch.mean(batch.old_log_probs - log_probs)
             explained_var = explained_variance(batch.values, batch.returns)
         self.log_dict({
             'policy_loss': policy_loss,
