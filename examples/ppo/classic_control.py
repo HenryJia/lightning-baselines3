@@ -68,20 +68,11 @@ env = make_vec_env('CartPole-v1', n_envs=4)
 
 model = Model(
     env=env,
-    eval_env = gym.make('CartPole-v1'),
-    buffer_length=2048,
-    num_rollouts=1,
-    batch_size=64,
-    epochs_per_rollout=10,
-    gamma=0.99,
-    gae_lambda=0.95,
+    eval_env=gym.make('CartPole-v1'),
     num_eval_episodes=100,
-    use_sde=False,
-    sde_sample_freq=-1,
-    monitor_wrapper=True,
-    seed=None)
+    seed=1337)
 
-trainer = pl.Trainer(max_epochs=10, terminate_on_nan=True, gpus=[0], gradient_clip_val=0.5)
+trainer = pl.Trainer(max_epochs=4, terminate_on_nan=True, gpus=[0], gradient_clip_val=0.5)
 trainer.fit(model)
 
 model.evaluate(deterministic=True, render=True)

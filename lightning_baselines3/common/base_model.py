@@ -98,9 +98,6 @@ class BaseModel(pl.LightningModule):
         else: # Otherwise, use a copy of the training env
             self.eval_env = copy.deepcopy(self.env)
 
-        if seed:
-            self.set_random_seed(self.seed)
-
         # Wrap the env if necessary
         self.env = wrap_env(self.env, self.verbose)
         self.eval_env = wrap_env(self.eval_env, self.verbose)
@@ -108,6 +105,10 @@ class BaseModel(pl.LightningModule):
         self.observation_space = self.env.observation_space
         self.action_space = self.env.action_space
         self.n_envs = self.env.num_envs
+
+        if seed:
+            self.seed = seed
+            self.set_random_seed(self.seed)
 
         if not support_multi_env and self.n_envs > 1:
             raise ValueError(

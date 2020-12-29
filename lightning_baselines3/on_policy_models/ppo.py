@@ -128,6 +128,7 @@ class PPO(OnPolicyModel):
             approx_kl = torch.mean(batch.old_log_probs - log_probs)
             explained_var = explained_variance(batch.old_values, batch.returns)
         self.log_dict({
+            'train_loss': loss,
             'policy_loss': policy_loss,
             'value_loss': value_loss,
             'entropy_loss': entropy_loss,
