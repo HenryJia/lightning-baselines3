@@ -324,28 +324,28 @@ class RolloutBuffer(BaseBuffer):
         """
         assert self.full, "Can only finalize RolloutBuffer when RolloutBuffer is full"
 
-        self.observations = np.concatenate(self.observations, axis=0)
-        self.actions = np.concatenate(self.actions, axis=0)
-        self.rewards = np.concatenate(self.rewards, axis=0)
-        self.dones = np.concatenate(self.dones, axis=0)
-        self.values = torch.cat(self.values, dim=0)
-        self.log_probs = torch.cat(self.log_probs, dim=0)
+        self.observations = np.stack(self.observations, axis=0)
+        self.actions = np.stack(self.actions, axis=0)
+        self.rewards = np.stack(self.rewards, axis=0)
+        self.dones = np.stack(self.dones, axis=0)
+        self.values = torch.stack(self.values, dim=0)
+        self.log_probs = torch.stack(self.log_probs, dim=0)
 
         assert last_value.device == self.values.device, 'All value function outputs must be on same device'
 
         # Move everything to torch
         # Lightning can handle moving things to device to some extent, but we need to make sure everything
         # is consistent for computing advantages and returns
-        self.observations = torch.as_tensor(self.observations)
-        self.actions = torch.as_tensor(self.actions)
-        self.rewards = torch.as_tensor(self.rewards).to(device=last_value.device)
+        self.observations = torch.as_tensor(self.observations).float()
+        self.actions = torch.as_tensor(self.actions).float()
+        self.rewards = torch.as_tensor(self.rewards).to(device=last_value.device, dtype=torch.float32)
         self.dones = torch.as_tensor(self.dones).to(device=last_value.device, dtype=torch.int32)
         last_dones = torch.as_tensor(last_dones).to(device=last_value.device, dtype=torch.int32)
 
         last_gae_lam = 0
         advantages = torch.zeros_like(self.rewards)
         next_non_terminal = 1.0 - last_dones
-        next_value = last_value
+        next_value = last_value.flatten()
         for step in reversed(range(self.buffer_size)):
             if step < self.buffer_size - 1:
                 next_non_terminal = 1.0 - self.dones[step + 1]
@@ -354,6 +354,14 @@ class RolloutBuffer(BaseBuffer):
             last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
             advantages[step] = last_gae_lam
         returns = advantages + self.values
+
+        self.observations = self.observations.view((-1, *self.observations.shape[2:]))
+        self.actions = self.actions.view((-1, *self.actions.shape[2:]))
+        self.rewards = self.rewards.flatten()
+        self.values = self.values.flatten()
+        self.log_probs = self.log_probs.flatten()
+        advantages = advantages.flatten()
+        returns = returns.flatten()
 
         return RolloutBufferSamples(self.observations, self.actions, self.values, self.log_probs, advantages, returns)
 

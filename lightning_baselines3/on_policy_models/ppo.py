@@ -105,6 +105,7 @@ class PPO(OnPolicyModel):
 
         dist, values = self(batch.observations)
         log_probs = dist.log_prob(batch.actions)
+        values = values.flatten()
 
         advantages = batch.advantages
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
@@ -115,7 +116,7 @@ class PPO(OnPolicyModel):
         policy_loss = -torch.min(policy_loss_1, policy_loss_2).mean()
 
         if self.clip_range_vf:
-            values = batch.old_values + torch.clamp(values - batch.old_values.detach(), -self.clip_range_vf, self.clip_range_vf)
+            values = batch.old_values + torch.clamp(values - batch.old_values, -self.clip_range_vf, self.clip_range_vf)
 
         value_loss = F.mse_loss(batch.returns, values)
 

@@ -95,7 +95,6 @@ class BaseModel(pl.LightningModule):
         self.env = maybe_make_env(env, monitor_wrapper, self.verbose)
         if eval_env: # If we have specificed an evaluation env, use that
             self.eval_env = maybe_make_env(eval_env, monitor_wrapper, self.verbose)
-            assert eval_env.num_envs == 1
         else: # Otherwise, use a copy of the training env
             self.eval_env = copy.deepcopy(self.env)
 

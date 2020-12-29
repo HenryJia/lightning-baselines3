@@ -97,7 +97,7 @@ class OnPolicyModel(BaseModel):
 
             with torch.no_grad():
                 # Convert to pytorch tensor, let Lightning take care of any GPU transfer
-                obs_tensor = torch.as_tensor(self._last_obs)
+                obs_tensor = torch.as_tensor(self._last_obs).to(device=self.device, dtype=torch.float32)
                 dist, values = self(obs_tensor)
                 actions = dist.sample()
                 log_probs = dist.log_prob(actions)

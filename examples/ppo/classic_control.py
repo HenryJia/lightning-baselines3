@@ -1,5 +1,6 @@
 from collections import OrderedDict
 
+import gym
 from gym import spaces
 
 import torch
@@ -10,7 +11,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 
 from lightning_baselines3.on_policy_models import PPO
-
+from lightning_baselines3.common.vec_env import make_vec_env
 
 
 class Model(PPO):
@@ -60,19 +61,24 @@ class Model(PPO):
         return optimizer
 
 
+env = make_vec_env('CartPole-v1', n_envs=4)
+
 model = Model(
-    env='CartPole-v1',
-    buffer_length=512,
+    env=env,
+    eval_env = gym.make('CartPole-v1'),
+    buffer_length=2048,
     num_rollouts=1,
-    batch_size=32,
+    batch_size=64,
     epochs_per_rollout=10,
-    gamma=0.9,
+    gamma=0.99,
     gae_lambda=0.95,
-    num_eval_episodes=5,
+    num_eval_episodes=100,
     use_sde=False,
     sde_sample_freq=-1,
     monitor_wrapper=True,
     seed=None)
 
-trainer = pl.Trainer(max_epochs=20, terminate_on_nan=True)
+trainer = pl.Trainer(max_epochs=3, terminate_on_nan=True, gpus=[0])
 trainer.fit(model)
+
+model.evaluate(deterministic=True, render=True)
