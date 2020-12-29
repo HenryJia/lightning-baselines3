@@ -19,29 +19,32 @@ class Model(PPO):
         super(Model, self).__init__(*args, **kwargs)
         self.lr = lr
 
-        net = [nn.Linear(self.observation_space.shape[0], hidden_size)]
+        actor = [nn.Linear(self.observation_space.shape[0], hidden_size)]
         if isinstance(self.action_space, spaces.Discrete):
-            net += [nn.Linear(hidden_size, self.action_space.n + 1)]
+            actor += [nn.Linear(hidden_size, self.action_space.n)]
         elif isinstance(self.action_space, spaces.Box2D):
-            net += [nn.Linear(hidden_size, self.action_space.shape[0] + 1)]
+            actor += [nn.Linear(hidden_size, self.action_space.shape[0])]
         else:
             raise Exception("This example only supports environments with Discrete and Box2D action spaces")
 
-        self.net = nn.Sequential(*net)
+        self.actor = nn.Sequential(*actor)
+        self.critic = nn.Sequential(
+            nn.Linear(self.observation_space.shape[0], hidden_size),
+            nn.Linear(hidden_size, 1))
+
 
     def forward(self, x, **kwargs):
-        out = self.net(x)
-        out, value = out[:, :-1], out[:, -1]
+        out = self.actor(x)
         if isinstance(self.action_space, spaces.Discrete):
             dist = distributions.Categorical(probs=F.softmax(out, dim=1))
         elif isinstance(self.action_space, spaces.Box2D):
             out = torch.chunk(out, 2, dim=1)
             dist = distributions.Normal(loc=out[0], scale=out[1])
-        return dist, value
+        return dist, self.critic(x).flatten()
 
 
     def predict(self, x, deterministic=True):
-        out = self.net(x)[:, :-1]
+        out = self.actor(x)
         if deterministic:
             if isinstance(self.action_space, spaces.Discrete):
                 out = torch.max(out, dim=1)[1]
