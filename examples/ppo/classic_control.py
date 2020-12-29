@@ -78,7 +78,7 @@ model = Model(
     monitor_wrapper=True,
     seed=None)
 
-trainer = pl.Trainer(max_epochs=3, terminate_on_nan=True, gpus=[0])
+trainer = pl.Trainer(max_epochs=10, terminate_on_nan=True, gpus=[0], gradient_clip_val=0.5)
 trainer.fit(model)
 
 model.evaluate(deterministic=True, render=True)

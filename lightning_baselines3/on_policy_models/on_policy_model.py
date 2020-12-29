@@ -140,9 +140,9 @@ class OnPolicyDataloader:
             observations, actions, old_values, old_log_probs, advantages, returns = experiences
             for j in range(self.model.epochs_per_rollout):
                 k = 0
-                perm = torch.randperm(self.model.buffer_length, device=observations.device)
-                while k < self.model.buffer_length:
-                    batch_size = min(self.model.buffer_length - k, self.model.batch_size)
+                perm = torch.randperm(observations.shape[0], device=observations.device)
+                while k < observations.shape[0]:
+                    batch_size = min(observations.shape[0] - k, self.model.batch_size)
                     yield RolloutBufferSamples(
                         observations[perm[k:k+batch_size]],
                         actions[perm[k:k+batch_size]],

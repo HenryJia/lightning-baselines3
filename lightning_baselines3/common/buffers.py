@@ -309,7 +309,7 @@ class RolloutBuffer(BaseBuffer):
 
         super(RolloutBuffer, self).reset()
 
-    def finalize(self, last_value: torch.Tensor, last_dones: np.ndarray) -> RolloutBufferSamples:
+    def finalize(self, last_values: torch.Tensor, last_dones: np.ndarray) -> RolloutBufferSamples:
         """
         Finalize and compute the returns (sum of discounted rewards) and GAE advantage.
         Adapted from Stable-Baselines PPO2.
@@ -331,26 +331,27 @@ class RolloutBuffer(BaseBuffer):
         self.values = torch.stack(self.values, dim=0)
         self.log_probs = torch.stack(self.log_probs, dim=0)
 
-        assert last_value.device == self.values.device, 'All value function outputs must be on same device'
+        assert last_values.device == self.values.device, 'All value function outputs must be on same device'
 
         # Move everything to torch
         # Lightning can handle moving things to device to some extent, but we need to make sure everything
         # is consistent for computing advantages and returns
         self.observations = torch.as_tensor(self.observations).float()
         self.actions = torch.as_tensor(self.actions).float()
-        self.rewards = torch.as_tensor(self.rewards).to(device=last_value.device, dtype=torch.float32)
-        self.dones = torch.as_tensor(self.dones).to(device=last_value.device, dtype=torch.int32)
-        last_dones = torch.as_tensor(last_dones).to(device=last_value.device, dtype=torch.int32)
+        self.rewards = torch.as_tensor(self.rewards).to(device=last_values.device, dtype=torch.float32)
+        self.dones = torch.as_tensor(self.dones).to(device=last_values.device, dtype=torch.int32)
+        last_dones = torch.as_tensor(last_dones).to(device=last_values.device, dtype=torch.int32)
 
         last_gae_lam = 0
         advantages = torch.zeros_like(self.rewards)
-        next_non_terminal = 1.0 - last_dones
-        next_value = last_value.flatten()
         for step in reversed(range(self.buffer_size)):
-            if step < self.buffer_size - 1:
+            if step == self.buffer_size - 1:
+                next_non_terminal = 1.0 - last_dones
+                next_values = last_values
+            else:
                 next_non_terminal = 1.0 - self.dones[step + 1]
-                next_value = self.values[step + 1]
-            delta = self.rewards[step] + self.gamma * next_value * next_non_terminal - self.values[step]
+                next_values = self.values[step + 1]
+            delta = self.rewards[step] + self.gamma * next_values * next_non_terminal - self.values[step]
             last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
             advantages[step] = last_gae_lam
         returns = advantages + self.values
