@@ -22,7 +22,7 @@ class DummyModel(PPO):
 
         if isinstance(self.action_space, spaces.Discrete):
             self.p = nn.Parameter(torch.ones(1, self.action_space.n) * 0.5)
-        elif isinstance(self.action_space, spaces.Box2D):
+        elif isinstance(self.action_space, spaces.Box):
             self.p = nn.Parameter(torch.ones(1, self.action_space.shape[0] * 2) * 0.5)
         else:
             raise Exception('Incompatible environment action space')
@@ -32,7 +32,7 @@ class DummyModel(PPO):
         p = self.p.expand(x.shape[0], self.p.shape[-1])
         if isinstance(self.action_space, spaces.Discrete):
             dist = distributions.Categorical(probs=F.softmax(p))
-        elif isinstance(self.action_space, spaces.Box2D):
+        elif isinstance(self.action_space, spaces.Box):
             p = torch.chunk(p, 2, dim=1)
             dist = distributions.Normal(loc=p[0], scale=p[1])
         return dist, torch.ones_like(x)[:, :1]
@@ -43,12 +43,12 @@ class DummyModel(PPO):
         if deterministic:
             if isinstance(self.action_space, spaces.Discrete):
                 out = torch.max(p, dim=1)[1]
-            elif isinstance(self.action_space, spaces.Box2D):
+            elif isinstance(self.action_space, spaces.Box):
                 out = torch.chunk(p, 2, dim=1)[0]
         else:
             if isinstance(self.action_space, spaces.Discrete):
                 out = distributions.Categorical(probs=torch.softmax(p)).sample()
-            elif isinstance(self.action_space, spaces.Box2D):
+            elif isinstance(self.action_space, spaces.Box):
                 p = torch.chunk(p, 2, dim=1)
                 out = distributions.Normal(loc=p[0], scale=p[1]).sample()
         return out.cpu().numpy()
@@ -60,7 +60,7 @@ class DummyModel(PPO):
 
 
 
-@pytest.mark.parametrize("env_id", ["CartPole-v0"])
+@pytest.mark.parametrize("env_id", ["CartPole-v1", "MountainCar-v0", "MountainCarContinuous-v0"])
 def test_on_policy_model(env_id):
     """
     Check that environmnent integrated in Gym pass the test.

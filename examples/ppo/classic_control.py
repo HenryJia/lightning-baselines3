@@ -22,10 +22,10 @@ class Model(PPO):
         actor = [nn.Linear(self.observation_space.shape[0], hidden_size)]
         if isinstance(self.action_space, spaces.Discrete):
             actor += [nn.Linear(hidden_size, self.action_space.n)]
-        elif isinstance(self.action_space, spaces.Box2D):
+        elif isinstance(self.action_space, spaces.Box):
             actor += [nn.Linear(hidden_size, self.action_space.shape[0])]
         else:
-            raise Exception("This example only supports environments with Discrete and Box2D action spaces")
+            raise Exception("This example only supports environments with Discrete and Box action spaces")
 
         self.actor = nn.Sequential(*actor)
         self.critic = nn.Sequential(
@@ -37,7 +37,7 @@ class Model(PPO):
         out = self.actor(x)
         if isinstance(self.action_space, spaces.Discrete):
             dist = distributions.Categorical(probs=F.softmax(out, dim=1))
-        elif isinstance(self.action_space, spaces.Box2D):
+        elif isinstance(self.action_space, spaces.Box):
             out = torch.chunk(out, 2, dim=1)
             dist = distributions.Normal(loc=out[0], scale=out[1])
         return dist, self.critic(x).flatten()
@@ -48,12 +48,12 @@ class Model(PPO):
         if deterministic:
             if isinstance(self.action_space, spaces.Discrete):
                 out = torch.max(out, dim=1)[1]
-            elif isinstance(self.action_space, spaces.Box2D):
+            elif isinstance(self.action_space, spaces.Box):
                 out = torch.chunk(out, 2, dim=1)[0]
         else:
             if isinstance(self.action_space, spaces.Discrete):
                 out = distributions.Categorical(probs=out).sample()
-            elif isinstance(self.action_space, spaces.Box2D):
+            elif isinstance(self.action_space, spaces.Box):
                 out = torch.chunk(out, 2, dim=1)
                 out = distributions.Normal(loc=out[0], scale=out[1]).sample()
         return out.cpu().numpy()
