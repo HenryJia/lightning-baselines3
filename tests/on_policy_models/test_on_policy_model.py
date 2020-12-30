@@ -45,6 +45,7 @@ def test_on_policy_model(env_id):
     """
     model = DummyModel(
         env_id,
+        eval_env=env_id,
         buffer_length=512,
         num_rollouts=1,
         batch_size=32,

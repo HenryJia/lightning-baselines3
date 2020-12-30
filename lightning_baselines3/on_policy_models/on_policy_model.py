@@ -45,22 +45,29 @@ class OnPolicyModel(BaseModel):
     def __init__(
         self,
         env: Union[GymEnv, str],
+        eval_env: Union[GymEnv, str],
         buffer_length: int,
         num_rollouts: int,
         batch_size: int,
         epochs_per_rollout: int,
-        gamma: float,
-        gae_lambda: float,
-        use_sde: bool,
-        sde_sample_freq: int,
-        **kwargs
+        num_eval_episodes: int = 1,
+        gamma: float = 0.9,
+        gae_lambda: float = 0.95,
+        use_sde: bool = False,
+        sde_sample_freq: int = -1,
+        verbose: int = 0,
+        monitor_wrapper: bool = True,
+        seed: Optional[int] = None,
     ):
         super(OnPolicyModel, self).__init__(
             env=env,
-            use_sde=use_sde,
-            sde_sample_freq=sde_sample_freq,
+            eval_env=eval_env,
+            num_eval_episodes=num_eval_episodes,
+            verbose=verbose,
             support_multi_env=True,
-            **kwargs
+            monitor_wrapper=monitor_wrapper,
+            seed=seed,
+            use_sde=use_sde,
         )
 
         self.buffer_length = buffer_length

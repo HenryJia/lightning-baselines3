@@ -64,10 +64,12 @@ class PPO(OnPolicyModel):
     def __init__(
         self,
         env: Union[GymEnv, str],
+        eval_env: Union[GymEnv, str],
         buffer_length: int = 2048,
         num_rollouts: int = 1,
         batch_size: int = 64,
         epochs_per_rollout: int = 10,
+        num_eval_episodes: int = 1,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
         clip_range: float = 0.2,
@@ -77,19 +79,25 @@ class PPO(OnPolicyModel):
         use_sde: bool = False,
         sde_sample_freq: int = -1,
         target_kl: Optional[float] = None,
-        **kwargs
+        verbose: int = 0,
+        monitor_wrapper: bool = True,
+        seed: Optional[int] = None,
     ):
         super(PPO, self).__init__(
             env=env,
+            eval_env=eval_env,
             buffer_length=buffer_length,
             num_rollouts=num_rollouts,
             batch_size=batch_size,
             epochs_per_rollout=epochs_per_rollout,
+            num_eval_episodes=num_eval_episodes,
             gamma=gamma,
             gae_lambda=gae_lambda,
             use_sde=use_sde,
             sde_sample_freq=sde_sample_freq,
-            **kwargs
+            verbose=verbose,
+            monitor_wrapper=monitor_wrapper,
+            seed=seed
         )
 
         self.clip_range = clip_range

@@ -69,18 +69,15 @@ class BaseModel(pl.LightningModule):
     def __init__(
         self,
         env: Union[GymEnv, str],
-        eval_env: Optional[Union[GymEnv, str]] = None,
+        eval_env: Union[GymEnv, str],
         num_eval_episodes: int = 1,
         verbose: int = 0,
         support_multi_env: bool = False,
         monitor_wrapper: bool = True,
         seed: Optional[int] = None,
         use_sde: bool = False,
-        sde_sample_freq: int = -1,
     ):
         super().__init__()
-        if verbose > 0:
-            print(f"Using {self.device} device")
 
         self.num_eval_episodes = num_eval_episodes
         self.verbose = verbose
@@ -89,14 +86,10 @@ class BaseModel(pl.LightningModule):
         self._episode_num = 0
         # Used for gSDE only
         self.use_sde = use_sde
-        self.sde_sample_freq = sde_sample_freq
 
-        # Create the env for training
+        # Create the env for training and evaluation
         self.env = maybe_make_env(env, monitor_wrapper, self.verbose)
-        if eval_env: # If we have specificed an evaluation env, use that
-            self.eval_env = maybe_make_env(eval_env, monitor_wrapper, self.verbose)
-        else: # Otherwise, use a copy of the training env
-            self.eval_env = copy.deepcopy(self.env)
+        self.eval_env = maybe_make_env(eval_env, monitor_wrapper, self.verbose)
 
         # Wrap the env if necessary
         self.env = wrap_env(self.env, self.verbose)
