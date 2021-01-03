@@ -69,7 +69,7 @@ class PPO(OnPolicyModel):
         num_rollouts: int = 1,
         batch_size: int = 64,
         epochs_per_rollout: int = 10,
-        num_eval_episodes: int = 1,
+        num_eval_episodes: int = 100,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
         clip_range: float = 0.2,
@@ -128,7 +128,7 @@ class PPO(OnPolicyModel):
 
         value_loss = F.mse_loss(batch.returns, values)
 
-        entropy_loss = dist.entropy().mean()
+        entropy_loss = -dist.entropy().mean()
         loss = policy_loss + self.value_coef * value_loss + self.entropy_coef * entropy_loss
 
         with torch.no_grad():

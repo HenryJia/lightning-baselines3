@@ -70,7 +70,7 @@ class BaseModel(pl.LightningModule):
         self,
         env: Union[GymEnv, str],
         eval_env: Union[GymEnv, str],
-        num_eval_episodes: int = 1,
+        num_eval_episodes: int = 100,
         verbose: int = 0,
         support_multi_env: bool = False,
         monitor_wrapper: bool = True,
