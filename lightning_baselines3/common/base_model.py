@@ -1,6 +1,7 @@
 """Abstract base classes for RL algorithms."""
 
 import io
+import inspect
 import pathlib
 import time
 import copy
@@ -23,7 +24,7 @@ from lightning_baselines3.common.utils import (
     set_random_seed,
     update_learning_rate,
 )
-from lightning_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecNormalize, VecTransposeImage
+from lightning_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecNormalize, VecTransposeImage, VecVideoRecorder
 from lightning_baselines3.common.vec_env import is_wrapped, unwrap_vec_normalize, wrap_env, is_image_space
 
 
@@ -114,7 +115,25 @@ class BaseModel(pl.LightningModule):
         self.reset()
 
 
-    def evaluate(self, deterministic: bool = True, render: bool = False) -> Tuple[List[float], List[int]]:
+    def save_hyperparameters(self, exclude=['env', 'eval_env'], frame=None):
+        if not frame:
+            frame = inspect.currentframe().f_back
+        if not exclude:
+            return super().save_hyperparameters(frame=frame)
+        if isinstance(exclude, str):
+            exclude = (exclude, )
+        init_args = pl.utilities.parsing.get_init_args(frame)
+        include = [k for k in init_args.keys() if k not in exclude]
+        return super().save_hyperparameters(*include, frame=frame)
+
+
+    def evaluate(
+        self,
+        num_eval_episodes: int,
+        deterministic: bool = True,
+        render: bool = False,
+        record: bool = False,
+        record_fn: Optional[str] = None) -> Tuple[List[float], List[int]]:
         """
         Evaluate the model with eval_env
 
@@ -134,8 +153,12 @@ class BaseModel(pl.LightningModule):
 
         episode_rewards, episode_lengths = [], []
 
+        if record:
+            assert render, "Cannot record without rendering"
+            recorder = VideoRecorder(env=self.eval_env, path=record_fn)
+
         not_reseted = True
-        while len(episode_rewards) < self.num_eval_episodes:
+        for i in range(num_eval_episodes):
             done = False
             episode_rewards += [0.0]
             episode_lengths += [0]
@@ -163,6 +186,8 @@ class BaseModel(pl.LightningModule):
 
                 if render:
                     self.eval_env.render()
+                    if record:
+                        recorder.capture_frame()
 
             if is_wrapped(self.eval_env, Monitor):
                 # Do not trust "done" with episode endings.
@@ -174,13 +199,15 @@ class BaseModel(pl.LightningModule):
                     # has been wrapped with it. Use those rewards instead.
                     episode_rewards[-1] = info["episode"]["r"]
                     episode_lengths[-1] = info["episode"]["l"]
+        if record:
+            recorder.close()
 
         return episode_rewards, episode_lengths
 
 
     def training_epoch_end(self, outputs):
         """" Run the evaluation function """
-        rewards, lengths = self.evaluate()
+        rewards, lengths = self.evaluate(self.num_eval_episodes)
         self.log_dict({
             'val_reward_mean': np.mean(rewards),
             'val_reward_std': np.std(rewards),

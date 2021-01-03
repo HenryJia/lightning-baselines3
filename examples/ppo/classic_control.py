@@ -43,7 +43,7 @@ class Model(PPO):
             nn.Tanh(),
             nn.Linear(hidden_size, 1))
 
-        #self.save_hyperparameters('lr', 'hidden_size')
+        self.save_hyperparameters()
 
     @staticmethod
     def add_model_specific_args(parent_parser=None):
@@ -124,12 +124,18 @@ if __name__ == '__main__':
 
     env = make_vec_env(env_args.env, n_envs=env_args.num_env, vec_env_cls=SubprocVecEnv)
 
+    checkpoint_callback = pl.callbacks.ModelCheckpoint(
+    monitor='val_reward_mean',
+    dirpath='classic_control',
+    filename='classic_control-{epoch:02d}-{val_reward_mean:.2f}',
+    save_top_k=1,
+    mode='max',
+    )
+
     model = Model(
         env=env,
         eval_env=gym.make(env_args.env),
         **model_args)
 
-    trainer = pl.Trainer(**trainer_args)
+    trainer = pl.Trainer(**trainer_args, callbacks=[checkpoint_callback])
     trainer.fit(model)
-
-    model.evaluate(deterministic=True, render=True)
