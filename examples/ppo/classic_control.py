@@ -3,6 +3,7 @@ import argparse
 
 import gym
 from gym import spaces
+import pybullet_envs
 
 import torch
 from  torch import distributions
@@ -20,9 +21,15 @@ class Model(PPO):
         super(Model, self).__init__(**kwargs)
         self.lr = lr
 
-        actor = [nn.Linear(self.observation_space.shape[0], hidden_size)]
+        actor = [
+            nn.Linear(self.observation_space.shape[0], hidden_size),
+            nn.Tanh(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.Tanh()]
         if isinstance(self.action_space, spaces.Discrete):
-            actor += [nn.Linear(hidden_size, self.action_space.n)]
+            actor += [
+                nn.Linear(hidden_size, self.action_space.n),
+                nn.Softmax(dim=1)]
         elif isinstance(self.action_space, spaces.Box):
             actor += [nn.Linear(hidden_size, self.action_space.shape[0] * 2)]
         else:
@@ -31,6 +38,9 @@ class Model(PPO):
         self.actor = nn.Sequential(*actor)
         self.critic = nn.Sequential(
             nn.Linear(self.observation_space.shape[0], hidden_size),
+            nn.Tanh(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.Tanh(),
             nn.Linear(hidden_size, 1))
 
         self.save_hyperparameters()
@@ -42,11 +52,13 @@ class Model(PPO):
             parser = argparse.ArgumentParser(parents=[parent_parser], add_help=False)
         else:
             parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument('--lr', type=float, default=3e-4)
+        parser.add_argument('--hidden_size', type=int, default=64)
         parser.add_argument('--buffer_length', type=int, default=2048)
         parser.add_argument('--num_rollouts', type=int, default=1)
         parser.add_argument('--batch_size', type=int, default=64)
         parser.add_argument('--epochs_per_rollout', type=int, default=10)
-        parser.add_argument('--num_eval_episodes', type=int, default=100)
+        parser.add_argument('--num_eval_episodes', type=int, default=10)
         parser.add_argument('--gamma', type=float, default=0.99)
         parser.add_argument('--gae_lambda', type=float, default=0.97)
         parser.add_argument('--clip_range', type=float, default=0.2)
@@ -65,7 +77,7 @@ class Model(PPO):
     def forward(self, x):
         out = self.actor(x)
         if isinstance(self.action_space, spaces.Discrete):
-            dist = distributions.Categorical(probs=F.softmax(out, dim=1))
+            dist = distributions.Categorical(probs=out)
         elif isinstance(self.action_space, spaces.Box):
             out = list(torch.chunk(out, 2, dim=1))
             out[1] = torch.diag_embed(torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
