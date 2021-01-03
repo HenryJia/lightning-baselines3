@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 
 from lightning_baselines3.on_policy_models import PPO
-from lightning_baselines3.common.vec_env import make_vec_env
+from lightning_baselines3.common.vec_env import make_vec_env, SubprocVecEnv
 
 
 class Model(PPO):
@@ -43,8 +43,7 @@ class Model(PPO):
             nn.Tanh(),
             nn.Linear(hidden_size, 1))
 
-        self.save_hyperparameters()
-
+        #self.save_hyperparameters('lr', 'hidden_size')
 
     @staticmethod
     def add_model_specific_args(parent_parser=None):
@@ -107,30 +106,30 @@ class Model(PPO):
         return optimizer
 
 
+if __name__ == '__main__':
+    # Parse env, model and trainer args separately so we don't have to abuse **kwargs
+    env_parser = argparse.ArgumentParser(add_help=False)
+    env_parser.add_argument('--env', type=str)
+    env_parser.add_argument('--num_env', type=int, default=4)
+    env_args, ignored = env_parser.parse_known_args()
 
-# Parse env, model and trainer args separately so we don't have to abuse **kwargs
-env_parser = argparse.ArgumentParser(add_help=False)
-env_parser.add_argument('--env', type=str)
-env_parser.add_argument('--num_env', type=int, default=4)
-env_args, ignored = env_parser.parse_known_args()
+    model_parser = Model.add_model_specific_args()
+    model_args, ignored = model_parser.parse_known_args()
+    model_args = vars(model_args)
 
-model_parser = Model.add_model_specific_args()
-model_args, ignored = model_parser.parse_known_args()
-model_args = vars(model_args)
+    trainer_parser = argparse.ArgumentParser(add_help=False)
+    trainer_parser = pl.Trainer.add_argparse_args(trainer_parser)
+    trainer_args, ignored = trainer_parser.parse_known_args()
+    trainer_args = vars(trainer_args)
 
-trainer_parser = argparse.ArgumentParser(add_help=False)
-trainer_parser = pl.Trainer.add_argparse_args(trainer_parser)
-trainer_args, ignored = trainer_parser.parse_known_args()
-trainer_args = vars(trainer_args)
+    env = make_vec_env(env_args.env, n_envs=env_args.num_env, vec_env_cls=SubprocVecEnv)
 
-env = make_vec_env(env_args.env, n_envs=env_args.num_env)
+    model = Model(
+        env=env,
+        eval_env=gym.make(env_args.env),
+        **model_args)
 
-model = Model(
-    env=env,
-    eval_env=gym.make(env_args.env),
-    **model_args)
+    trainer = pl.Trainer(**trainer_args)
+    trainer.fit(model)
 
-trainer = pl.Trainer(**trainer_args)
-trainer.fit(model)
-
-model.evaluate(deterministic=True, render=True)
+    model.evaluate(deterministic=True, render=True)
