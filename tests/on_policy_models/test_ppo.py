@@ -27,6 +27,8 @@ class DummyModel(PPO):
         else:
             raise Exception('Incompatible environment action space')
 
+        self.save_hyperparameters()
+
 
     def forward(self, x, **kwargs):
         p = self.p.expand(x.shape[0], self.p.shape[-1])

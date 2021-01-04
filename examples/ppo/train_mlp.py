@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import argparse
 
+import numpy as np
 import gym
 from gym import spaces
 import pybullet_envs
@@ -14,6 +15,7 @@ import pytorch_lightning as pl
 
 from lightning_baselines3.on_policy_models import PPO
 from lightning_baselines3.common.vec_env import make_vec_env, SubprocVecEnv
+
 
 
 class Model(PPO):
@@ -106,36 +108,49 @@ class Model(PPO):
         return optimizer
 
 
+
 if __name__ == '__main__':
     # Parse env, model and trainer args separately so we don't have to abuse **kwargs
-    env_parser = argparse.ArgumentParser(add_help=False)
-    env_parser.add_argument('--env', type=str)
-    env_parser.add_argument('--num_env', type=int, default=4)
-    env_args, ignored = env_parser.parse_known_args()
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('--env', type=str)
+    parser.add_argument('--num_env', type=int, default=4)
+    parser.add_argument('--evaluate', action='store_true')
+    parser.add_argument('--model_fn', type=str, default='ppo_mlp')
+    args, ignored = parser.parse_known_args()
 
-    model_parser = Model.add_model_specific_args()
-    model_args, ignored = model_parser.parse_known_args()
-    model_args = vars(model_args)
+    if not args.evaluate:
+        model_parser = Model.add_model_specific_args()
+        model_args, ignored = model_parser.parse_known_args()
+        model_args = vars(model_args)
 
-    trainer_parser = argparse.ArgumentParser(add_help=False)
-    trainer_parser = pl.Trainer.add_argparse_args(trainer_parser)
-    trainer_args, ignored = trainer_parser.parse_known_args()
-    trainer_args = vars(trainer_args)
+        trainer_parser = argparse.ArgumentParser(add_help=False)
+        trainer_parser = pl.Trainer.add_argparse_args(trainer_parser)
+        trainer_args, ignored = trainer_parser.parse_known_args()
+        trainer_args = vars(trainer_args)
 
-    env = make_vec_env(env_args.env, n_envs=env_args.num_env, vec_env_cls=SubprocVecEnv)
+        env = make_vec_env(args.env, n_envs=args.num_env, vec_env_cls=SubprocVecEnv)
 
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(
-    monitor='val_reward_mean',
-    dirpath=env_args.env+'-mlp',
-    filename='mlp-{epoch:02d}-{val_reward_mean:.2f}.pl',
-    save_top_k=1,
-    mode='max',
-    )
+        checkpoint_callback = pl.callbacks.ModelCheckpoint(
+        monitor='val_reward_mean',
+        dirpath=args.env+'_ppo_mlp',
+        filename='mlp-{epoch:02d}-{val_reward_mean:.2f}.pl',
+        save_top_k=1,
+        mode='max',
+        )
 
-    model = Model(
-        env=env,
-        eval_env=gym.make(env_args.env),
-        **model_args)
+        model = Model(
+            env=env,
+            eval_env=gym.make(args.env),
+            **model_args)
 
-    trainer = pl.Trainer(**trainer_args, callbacks=[checkpoint_callback])
-    trainer.fit(model)
+        trainer = pl.Trainer(**trainer_args, callbacks=[checkpoint_callback])
+        trainer.fit(model)
+    else:
+        env = gym.make(args.env)
+        if 'Bullet' in args.env:
+            env.render(mode='human')
+            env.reset()
+        model = Model.load_from_checkpoint(args.model_fn, env=env, eval_env=env)
+
+        rewards, lengths = model.evaluate(num_eval_episodes=10)
+        print('Mean rewards and length:', np.mean(rewards), np.mean(lengths))

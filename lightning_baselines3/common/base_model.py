@@ -115,7 +115,7 @@ class BaseModel(pl.LightningModule):
         self.reset()
 
 
-    def save_hyperparameters(self, exclude=['env', 'eval_env'], frame=None):
+    def save_hyperparameters(self, frame=None, exclude=['env', 'eval_env']):
         if not frame:
             frame = inspect.currentframe().f_back
         if not exclude:
