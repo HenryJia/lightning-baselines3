@@ -126,8 +126,8 @@ if __name__ == '__main__':
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
     monitor='val_reward_mean',
-    dirpath='classic_control',
-    filename='classic_control-{epoch:02d}-{val_reward_mean:.2f}',
+    dirpath=env_args.env+'-mlp',
+    filename='mlp-{epoch:02d}-{val_reward_mean:.2f}.pl',
     save_top_k=1,
     mode='max',
     )
