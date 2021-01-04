@@ -114,8 +114,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--env', type=str)
     parser.add_argument('--num_env', type=int, default=4)
-    parser.add_argument('--evaluate', action='store_true')
+    parser.add_argument('--evaluate', action='store_true') # If set to true, load model from model_fn and don't train
     parser.add_argument('--model_fn', type=str, default='ppo_mlp')
+    parser.add_argument('--video_fn', type=str, default='ppo_mlp.mp4')
     args, ignored = parser.parse_known_args()
 
     if not args.evaluate:
@@ -152,5 +153,6 @@ if __name__ == '__main__':
             env.reset()
         model = Model.load_from_checkpoint(args.model_fn, env=env, eval_env=env)
 
-        rewards, lengths = model.evaluate(num_eval_episodes=10)
+        # Warning: for some reason PyBullet environments are hardcoded to record at 320x240, and there's no easy way to deal with this
+        rewards, lengths = model.evaluate(num_eval_episodes=10, render=True, record=True, record_fn=args.video_fn)
         print('Mean rewards and length:', np.mean(rewards), np.mean(lengths))
