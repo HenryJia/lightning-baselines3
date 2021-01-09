@@ -56,46 +56,6 @@ class BaseBuffer(object):
         self.full = False
         self.n_envs = n_envs
 
-    @staticmethod
-    def swap_and_flatten(arr: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
-        """
-        Swap and then flatten axes 0 (buffer_size) and 1 (n_envs)
-        to convert shape from [n_steps, n_envs, ...] (when ... is the shape of the features)
-        to [n_steps * n_envs, ...] (which maintain the order)
-
-        :param arr: (np.ndarray)
-        :return: (np.ndarray)
-        """
-        shape = arr.shape
-        if len(shape) < 3:
-            shape = shape + (1,)
-        if isinstance(arr, torch.Tensor): # If we're working with torch.Tensor, use view to avoid a copy
-            return torch.transpose(arr, 0, 1).view(shape[0] * shape[1], *shape[2:])
-        return arr.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
-
-    #@staticmethod
-    #def to_torch(
-        #array: Union[np.ndarray, torch.Tensor], copy: bool = False, device: Union[torch.Device, None] = None
-        #) -> torch.Tensor:
-        #"""
-        #Convert a numpy array to a PyTorch tensor and copy it to a device
-        #Note: It does not copy by default
-
-        #:param array: (np.ndarray)
-        #:param copy: (bool) Whether to copy or not the data
-            #(may be useful to avoid changing things be reference)
-        #:param device: (torch.Device, None) Which device to copy the tensor to, set to None for no copy
-        #:return: (torch.Tensor)
-        #"""
-        #if not if isinstance(array, torch.Tensor):
-            #if copy:
-                #array = torch.tensor(array)
-            #else:
-                #array = torch.as_tensor(array)
-        #if device:
-            #array = array.pin_memory().to(device)
-        #return array
-
     def size(self) -> int:
         """
         :return: (int) The current size of the buffer
@@ -110,39 +70,12 @@ class BaseBuffer(object):
         """
         raise NotImplementedError()
 
-    def extend(self, *args, **kwargs) -> None:
-        """
-        Add a new batch of transitions to the bufferrollout_buffer
-        """
-        # Do a for loop along the batch axis
-        for data in zip(*args):
-            self.add(*data)
-
     def reset(self) -> None:
-
         """
         Reset the buffer.
         """
         self.pos = 0
         self.full = False
-
-    #def sample(self, env: Optional[VecNormalize] = None):
-        #"""
-        #:param env: (Optional[VecNormalize]) associated gym VecEnv
-            #to normalize the observations/rewards when sampling
-        #:return: (Union[RolloutBufferSamples, ReplayBufferSamples])
-        #"""
-        #upper_bound = self.buffer_size if self.full else self.pos
-        #batch_inds = np.random.randint(0, upper_bound, size=self.batch_size)
-        #return self._get_samples(batch_inds, env=env)
-
-    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None):
-        """
-        :param batch_inds: (torch.Tensor)
-        :param env: (Optional[VecNormalize])
-        :return: (Union[RolloutBufferSamples, ReplayBufferSamples])
-        """
-        raise NotImplementedError()
 
     @staticmethod
     def _normalize_obs(obs: np.ndarray, env: Optional[VecNormalize] = None) -> np.ndarray:
@@ -299,7 +232,6 @@ class RolloutBuffer(BaseBuffer):
         self.reset()
 
     def reset(self) -> None:
-
         self.observations = []
         self.actions = []
         self.rewards = []

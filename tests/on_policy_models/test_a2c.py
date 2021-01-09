@@ -63,7 +63,7 @@ class DummyModel(A2C):
 
 
 @pytest.mark.parametrize("env_id", ["CartPole-v1", "MountainCar-v0", "MountainCarContinuous-v0"])
-def test_on_policy_model(env_id):
+def test_a2c_model(env_id):
     """
     Check that environmnent integrated in Gym pass the test.
 
