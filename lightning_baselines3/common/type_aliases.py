@@ -13,12 +13,3 @@ GymObs = Union[Tuple, Dict[str, Any], np.ndarray, int]
 GymStepReturn = Tuple[GymObs, float, bool, Dict]
 TensorDict = Dict[str, torch.Tensor]
 OptimizerStateDict = Dict[str, Any]
-
-
-
-class ReplayBufferSamples(NamedTuple):
-    observations: torch.Tensor
-    actions: torch.Tensor
-    next_observations: torch.Tensor
-    dones: torch.Tensor
-    rewards: torch.Tensor

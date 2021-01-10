@@ -7,11 +7,11 @@ import gym
 import numpy as np
 import pytest
 
-from lightning_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecFrameStack, VecNormalize
+from lightning_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecFrameStack
 
 N_ENVS = 3
 VEC_ENV_CLASSES = [DummyVecEnv, SubprocVecEnv]
-VEC_ENV_WRAPPERS = [None, VecNormalize, VecFrameStack]
+VEC_ENV_WRAPPERS = [None, VecFrameStack]
 
 
 class CustomGymEnv(gym.Env):
@@ -180,15 +180,12 @@ def test_vecenv_terminal_obs(vec_env_class, vec_env_wrapper):
                 terminal_obs = info["terminal_observation"]
 
                 # do some rough ordering checks that should work for all
-                # wrappers, including VecNormalize
                 assert np.all(prev_obs < terminal_obs)
                 assert np.all(obs < prev_obs)
 
-                if not isinstance(vec_env, VecNormalize):
-                    # more precise tests that we can't do with VecNormalize
-                    # (which changes observation values)
-                    assert np.all(prev_obs + 1 == terminal_obs)
-                    assert np.all(obs == 0)
+                # (which changes observation values)
+                assert np.all(prev_obs + 1 == terminal_obs)
+                assert np.all(obs == 0)
 
         prev_obs_b = obs_b
 
@@ -297,50 +294,6 @@ def test_subproc_start_method():
     with pytest.raises(ValueError, match="cannot find context for 'illegal_method'"):
         vec_env_class = functools.partial(SubprocVecEnv, start_method="illegal_method")
         check_vecenv_spaces(vec_env_class, space, obs_assert)
-
-
-class CustomWrapperA(VecNormalize):
-    def __init__(self, venv):
-        VecNormalize.__init__(self, venv)
-        self.var_a = "a"
-
-
-class CustomWrapperB(VecNormalize):
-    def __init__(self, venv):
-        VecNormalize.__init__(self, venv)
-        self.var_b = "b"
-
-    def func_b(self):
-        return self.var_b
-
-    def name_test(self):
-        return self.__class__
-
-
-class CustomWrapperBB(CustomWrapperB):
-    def __init__(self, venv):
-        CustomWrapperB.__init__(self, venv)
-        self.var_bb = "bb"
-
-
-def test_vecenv_wrapper_getattr():
-    def make_env():
-        return CustomGymEnv(gym.spaces.Box(low=np.zeros(2), high=np.ones(2)))
-
-    vec_env = DummyVecEnv([make_env for _ in range(N_ENVS)])
-    wrapped = CustomWrapperA(CustomWrapperBB(vec_env))
-    assert wrapped.var_a == "a"
-    assert wrapped.var_b == "b"
-    assert wrapped.var_bb == "bb"
-    assert wrapped.func_b() == "b"
-    assert wrapped.name_test() == CustomWrapperBB
-
-    double_wrapped = CustomWrapperA(CustomWrapperB(wrapped))
-    _ = double_wrapped.var_a  # should not raise as it is directly defined here
-    with pytest.raises(AttributeError):  # should raise due to ambiguity
-        _ = double_wrapped.var_b
-    with pytest.raises(AttributeError):  # should raise as does not exist
-        _ = double_wrapped.nonexistent_attribute
 
 
 def test_framestack_vecenv():

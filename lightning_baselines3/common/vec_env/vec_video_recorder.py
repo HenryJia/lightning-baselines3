@@ -6,7 +6,6 @@ from lightning_baselines3.common.vec_env.base_vec_env import VecEnvWrapper
 from lightning_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from lightning_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 from lightning_baselines3.common.vec_env.vec_frame_stack import VecFrameStack
-from lightning_baselines3.common.vec_env.vec_normalize import VecNormalize
 
 
 class VecVideoRecorder(VecEnvWrapper):
@@ -33,7 +32,7 @@ class VecVideoRecorder(VecEnvWrapper):
 
         # Unwrap to retrieve metadata dict
         # that will be used by gym recorder
-        while isinstance(temp_env, VecNormalize) or isinstance(temp_env, VecFrameStack):
+        while isinstance(temp_env, VecFrameStack):
             temp_env = temp_env.venv
 
         if isinstance(temp_env, DummyVecEnv) or isinstance(temp_env, SubprocVecEnv):

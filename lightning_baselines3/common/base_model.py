@@ -25,8 +25,8 @@ from lightning_baselines3.common.utils import (
     set_random_seed,
     update_learning_rate,
 )
-from lightning_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecNormalize, VecTransposeImage, VecVideoRecorder
-from lightning_baselines3.common.vec_env import is_wrapped, unwrap_vec_normalize, wrap_env, is_image_space
+from lightning_baselines3.common.vec_env import VecEnv
+from lightning_baselines3.common.vec_env import is_wrapped, wrap_env
 
 
 def maybe_make_env(env: Union[GymEnv, str], monitor_wrapper: bool, verbose: int) -> Optional[GymEnv]:

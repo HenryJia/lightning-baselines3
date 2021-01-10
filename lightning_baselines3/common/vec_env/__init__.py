@@ -10,7 +10,6 @@ from lightning_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from lightning_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 from lightning_baselines3.common.vec_env.vec_check_nan import VecCheckNan
 from lightning_baselines3.common.vec_env.vec_frame_stack import VecFrameStack
-from lightning_baselines3.common.vec_env.vec_normalize import VecNormalize
 from lightning_baselines3.common.vec_env.vec_transpose import VecTransposeImage
 from lightning_baselines3.common.vec_env.vec_video_recorder import VecVideoRecorder
 
@@ -71,14 +70,6 @@ def unwrap_vec_wrapper(env: Union[gym.Env, VecEnv], vec_wrapper_class: Type[VecE
             return env_tmp
         env_tmp = env_tmp.venv
     return None
-
-
-def unwrap_vec_normalize(env: Union[gym.Env, VecEnv]) -> Optional[VecNormalize]:
-    """
-    :param env: (gym.Env)
-    :return: (VecNormalize)
-    """
-    return unwrap_vec_wrapper(env, VecNormalize)  # pytype:disable=bad-return-type
 
 
 def make_vec_env(
