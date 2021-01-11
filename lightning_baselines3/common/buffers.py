@@ -142,37 +142,21 @@ class ReplayBuffer(BaseBuffer):
             batch_inds = (np.random.randint(1, self.buffer_size, size=self.batch_size) + self.pos) % self.buffer_size
         else:
             batch_inds = np.random.randint(0, self.pos, size=self.batch_size)
-        return self._get_samples(batch_inds, env=env)
 
-
-    def _get_samples(self, batch_inds: np.ndarray) -> ReplayBufferSamples:
-        if self.optimize_memory_usage:
-            next_obs = self._normalize_obs(self.observations[(batch_inds + 1) % self.buffer_size, 0, :], env)
+        next_obs = self.observations[(batch_inds + 1) % self.buffer_size, 0, :]
+        # Simple normalisation using the whole buffer
+        if self.full:
+            rewards = (self.rewards[batch_inds] - np.mean(self.rewards)) / np.std(self.rewards)
         else:
-            next_obs = self._normalize_obs(self.next_observations[batch_inds, 0, :], env)
+            rewards = (self.rewards[batch_inds] - np.mean(self.rewards[:self.pos + 1])) / np.std(self.rewards[:self.pos + 1])
 
-        data = (
-            self._normalize_obs(self.observations[batch_inds, 0, :], env),
-            self.actions[batch_inds, 0, :],
-            next_obs,
-            self.dones[batch_inds],
-            self._normalize_reward(self.rewards[batch_inds], env),
-        )
-        return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
+        return ReplayBufferSamples(
+            torch.as_tensor(self.observations[batch_inds, 0, :])
+            torch.as_tensor(self.actions[batch_inds, 0, :]),
+            torch.as_tensor(next_obs),
+            torch.as_tensor(self.dones[batch_inds]),
+            torch.as_tensor(rewards))
 
-
-    @staticmethod
-    def _normalize_obs(obs: np.ndarray) -> np.ndarray:
-        if env is not None:
-            return env.normalize_obs(obs).astype(np.float32)
-        return obs
-
-
-    @staticmethod
-    def _normalize_reward(reward: np.ndarray) -> np.ndarray:
-        if env is not None:
-            return env.normalize_reward(reward).astype(np.float32)
-        return reward
 
 
 class RolloutBuffer(BaseBuffer):
