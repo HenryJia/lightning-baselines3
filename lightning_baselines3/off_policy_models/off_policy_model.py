@@ -1,4 +1,5 @@
 import time
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 from contextlib import ExitStack
 
@@ -74,7 +75,7 @@ class OffPolicyModel(BaseModel):
         )
 
         assert self.env.num_envs == 1, "OffPolicyAlgorithm only support single environment at this stage"
-        assert train_freq > 0 or episodes_per_rollout > 0. "At least one of train_freq or episodes_per_rollout must be passed"
+        assert train_freq > 0 or episodes_per_rollout > 0, "At least one of train_freq or episodes_per_rollout must be passed"
         if train_freq > 0 and episodes_per_rollout > 0:
             warnings.warn(
                 "You passed a positive value for `train_freq` and `n_episodes_rollout`."
@@ -93,14 +94,12 @@ class OffPolicyModel(BaseModel):
         self.gradient_steps = gradient_steps
         self.num_rollouts = num_rollouts
         self.gamma = gamma
-        self.gae_lambda = gae_lambda
 
         self.replay_buffer = ReplayBuffer(
             buffer_length,
+            batch_size,
             self.observation_space,
             self.action_space,
-            gamma=self.gamma,
-            gae_lambda=self.gae_lambda,
             n_envs=self.n_envs,
         )
 
@@ -129,12 +128,12 @@ class OffPolicyModel(BaseModel):
                 self.reset_noise(self.env.num_envs)
 
             if self.num_timesteps < self.warmup_length:
-                action = np.array([self.action_space.sample()])
+                actions = np.array([self.action_space.sample()])
             else:
                 with torch.no_grad():
                     # Convert to pytorch tensor, let Lightning take care of any GPU transfer
                     obs_tensor = torch.as_tensor(self._last_obs).to(device=self.device, dtype=torch.float32)
-                    action = self.predict(obs_tensor, deterministic=False)
+                    actions = self.predict(obs_tensor, deterministic=False)
 
             # Rescale and perform action
             clipped_actions = actions

@@ -96,12 +96,10 @@ class ReplayBuffer(BaseBuffer):
         batch_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        store_gpu: bool = True,
         n_envs: int = 1,
     ):
         super(ReplayBuffer, self).__init__(buffer_size, batch_size, observation_space, action_space, device, n_envs=n_envs)
 
-        self.store_gpu = store_gpu
 
         assert n_envs == 1, "Replay buffer only support single environment for now"
 
