@@ -153,9 +153,11 @@ class OffPolicyModel(BaseModel):
 
             self._last_obs = new_obs
             i += 1
+            self.num_timesteps += 1
             # Note: VecEnv might not return None, it might return [None] or something, remember to double check this!
             if dones:
                 total_episodes += 1
+
 
 
 class OffPolicyDataloader:
