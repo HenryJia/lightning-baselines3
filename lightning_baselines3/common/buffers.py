@@ -99,6 +99,8 @@ class ReplayBuffer(BaseBuffer):
     ):
         super(ReplayBuffer, self).__init__(buffer_size, observation_space, action_space, n_envs=n_envs)
 
+        self.batch_size = batch_size
+
         assert n_envs == 1, "Replay buffer only support single environment for now"
 
         self.observations = np.zeros((self.buffer_size, self.n_envs) + self.obs_shape, dtype=observation_space.dtype)

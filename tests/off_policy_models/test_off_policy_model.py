@@ -12,11 +12,11 @@ from torch import distributions
 
 import pytorch_lightning as pl
 
-from lightning_baselines3.on_policy_models.on_policy_model import OnPolicyModel
+from lightning_baselines3.off_policy_models.off_policy_model import OffPolicyModel
 
 
 
-class DummyModel(OnPolicyModel):
+class DummyModel(OffPolicyModel):
     def __init__(self, *args, **kwargs):
         super(DummyModel, self).__init__(*args, **kwargs)
 
@@ -35,7 +35,7 @@ class DummyModel(OnPolicyModel):
         elif isinstance(self.action_space, spaces.Box):
             p = torch.chunk(p, 2, dim=1)
             dist = distributions.Normal(loc=p[0], scale=1 + p[1] ** 2)
-        return dist, torch.ones_like(x)[:, :1]
+        return dist
 
 
     def predict(self, x, deterministic=True):
@@ -55,7 +55,7 @@ class DummyModel(OnPolicyModel):
 
 
     def training_step(self, x, batch_idx):
-        loss = self(x.observations)[0].entropy().mean()
+        loss = self(x.observations).entropy().mean()
         self.log('loss', loss)
         return loss 
 
@@ -77,13 +77,13 @@ def test_on_policy_model(env_id):
     model = DummyModel(
         env_id,
         eval_env=env_id,
-        buffer_length=512,
-        num_rollouts=1,
-        batch_size=32,
-        epochs_per_rollout=10,
+        batch_size=256,
+        buffer_length=1000,
+        warmup_length=100,
+        train_freq=500,
+        num_rollouts=10,
         num_eval_episodes=10,
         gamma=0.9,
-        gae_lambda=0.95,
         use_sde=False,
         sde_sample_freq=-1,
         monitor_wrapper=True,

@@ -167,4 +167,4 @@ class OffPolicyDataloader:
         for i in range(self.model.num_rollouts):
             self.model.collect_rollouts()
             for j in range(self.model.gradient_steps):
-                yield self.replay_buffer.sample()
+                yield self.model.replay_buffer.sample()
