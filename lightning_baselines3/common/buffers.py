@@ -151,7 +151,7 @@ class ReplayBuffer(BaseBuffer):
             rewards = (self.rewards[batch_inds] - np.mean(self.rewards[:self.pos + 1])) / np.std(self.rewards[:self.pos + 1])
 
         return ReplayBufferSamples(
-            torch.as_tensor(self.observations[batch_inds, 0, :])
+            torch.as_tensor(self.observations[batch_inds, 0, :]),
             torch.as_tensor(self.actions[batch_inds, 0, :]),
             torch.as_tensor(next_obs),
             torch.as_tensor(self.dones[batch_inds]),
