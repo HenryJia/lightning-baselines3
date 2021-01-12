@@ -86,7 +86,6 @@ class ReplayBuffer(BaseBuffer):
     :param buffer_size: (int) Max number of element in the buffer
     :param observation_space: (spaces.Space) Observation space
     :param action_space: (spaces.Space) Action space
-    :param device: (torch.device)
     :param n_envs: (int) Number of parallel environments
     """
 
@@ -98,8 +97,7 @@ class ReplayBuffer(BaseBuffer):
         action_space: spaces.Space,
         n_envs: int = 1,
     ):
-        super(ReplayBuffer, self).__init__(buffer_size, batch_size, observation_space, action_space, device, n_envs=n_envs)
-
+        super(ReplayBuffer, self).__init__(buffer_size, observation_space, action_space, n_envs=n_envs)
 
         assert n_envs == 1, "Replay buffer only support single environment for now"
 
