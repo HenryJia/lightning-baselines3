@@ -47,7 +47,7 @@ class DummyModel(OnPolicyModel):
                 out = torch.chunk(p, 2, dim=1)[0]
         else:
             if isinstance(self.action_space, spaces.Discrete):
-                out = distributions.Categorical(probs=torch.softmax(p)).sample()
+                out = distributions.Categorical(probs=torch.softmax(p, dim=0)).sample()
             elif isinstance(self.action_space, spaces.Box):
                 p = torch.chunk(p, 2, dim=1)
                 out = distributions.Normal(loc=p[0], scale=1 + p[1] ** 2).sample()

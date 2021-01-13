@@ -94,3 +94,8 @@ class DQN(OffPolicyModel):
         self.exploration_initial_eps = exploration_initial_eps
         self.exploration_final_eps = exploration_final_eps
         self.exploration_decay_steps = exploration_decay_steps
+
+
+    def reset(self):
+        super(DQN, self).reset()
+        self.exploration_eps = self.exploration_initial_eps

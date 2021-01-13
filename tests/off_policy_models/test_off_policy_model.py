@@ -47,7 +47,7 @@ class DummyModel(OffPolicyModel):
                 out = torch.chunk(p, 2, dim=1)[0]
         else:
             if isinstance(self.action_space, spaces.Discrete):
-                out = distributions.Categorical(probs=torch.softmax(p)).sample()
+                out = distributions.Categorical(probs=torch.softmax(p, dim=0)).sample()
             elif isinstance(self.action_space, spaces.Box):
                 p = torch.chunk(p, 2, dim=1)
                 out = distributions.Normal(loc=p[0], scale=1 + p[1] ** 2).sample()
@@ -68,7 +68,7 @@ class DummyModel(OffPolicyModel):
 
 
 @pytest.mark.parametrize("env_id", ["CartPole-v1", "MountainCar-v0", "MountainCarContinuous-v0"])
-def test_on_policy_model(env_id):
+def test_off_policy_model(env_id):
     """
     Check that environmnent integrated in Gym pass the test.
 
