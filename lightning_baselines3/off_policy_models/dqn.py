@@ -57,7 +57,6 @@ class DQN(OffPolicyModel):
         gradient_steps: int = 1,
         target_update_interval: int = 2500,
         num_eval_episodes: int = 100,
-        tau: float = 1.0,
         gamma: float = 0.99,
         use_sde: bool = False,
         sde_sample_freq: int = -1,
