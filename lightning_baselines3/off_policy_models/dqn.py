@@ -55,11 +55,8 @@ class DQN(OffPolicyModel):
         episodes_per_rollout: int = -1,
         num_rollouts: int = 1,
         gradient_steps: int = 1,
-        target_update_interval: int = int(1e4),
+        target_update_interval: int = 2500,
         num_eval_episodes: int = 100,
-        exploration_initial_eps: float = 1.0,
-        exploration_final_eps: float = 0.05,
-        exploration_decay_steps: float = 10000,
         tau: float = 1.0,
         gamma: float = 0.99,
         use_sde: bool = False,
@@ -91,11 +88,39 @@ class DQN(OffPolicyModel):
         )
 
         self.target_update_interval = target_update_interval
-        self.exploration_initial_eps = exploration_initial_eps
-        self.exploration_final_eps = exploration_final_eps
-        self.exploration_decay_steps = exploration_decay_steps
 
 
     def reset(self):
         super(DQN, self).reset()
-        self.exploration_eps = self.exploration_initial_eps
+        self.update_timestep = 0
+
+
+    def forward_target(self, x):
+        """
+        Runs the target Q network
+        """
+        raise NotImplementedError
+
+
+    def update_target(self):
+        """
+        Function to update the target Q network periodically
+        """
+        raise NotImplementedError
+
+
+    def training_step(self, batch, batch_idx):
+        if float(self.num_timesteps - self.update_timestep) / self.target_update_interval > 1:
+            self.update_target()
+            self.update_timestep = self.num_timesteps
+
+        with torch.no_grad():
+            target_q = self.forward_target(batch.next_observations)
+            target_q = torch.max(target_q, dim=1, keepdims=True)[0]
+            target_q = batch.rewards + (1 - batch.dones) * self.gamma * self.target_q
+
+        current_q = self(batch.observations)
+        current_q = torch.gather(current_q, dim=1, index=batch.actions.long())
+
+        loss = F.smooth_l1_loss(current_q, target_q)
+        return loss

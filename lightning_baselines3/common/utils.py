@@ -363,29 +363,6 @@ def safe_mean(arr: Union[np.ndarray, list, deque]) -> np.ndarray:
     return np.nan if len(arr) == 0 else np.mean(arr)
 
 
-def polyak_update(params: Iterable[torch.nn.Parameter], target_params: Iterable[torch.nn.Parameter], tau: float) -> None:
-    """
-    Perform a Polyak average update on ``target_params`` using ``params``:
-    target parameters are slowly updated towards the th.main parameters.
-    ``tau``, the soft update coefficient controls the interpolation:
-    ``tau=1`` corresponds to copying the parameters to the target ones whereas nothing happens when ``tau=0``.
-    The Polyak update is done in place, with ``no_grad``, and therefore does not create intermediate tensors,
-    or a computation graph, reducing memory cost and improving performance.  We scale the target params
-    by ``1-tau`` (in-place), add the new weights, scaled by ``tau`` and store the result of the sum in the target
-    params (in place).
-    See https://github.com/DLR-RM/stable-baselines3/issues/93
-
-    :param params: (Iterable[torch.nn.Parameter]) parameters to use to update the target params
-    :param target_params: (Iterable[torch.nn.Parameter]) parameters to update
-    :param tau: (float) the soft update coefficient ("Polyak update", between 0 and 1)
-    """
-    with torch.no_grad():
-        for param, target_param in zip(params, target_params):
-            target_param.data.mul_(1 - tau)
-            torch.add(target_param.data, param.data, alpha=tau, out=target_param.data)
-
-
-
 class RunningMeanStd(object):
     def __init__(self, epsilon: float = 1e-4, shape: Tuple[int, ...] = ()):
         """
