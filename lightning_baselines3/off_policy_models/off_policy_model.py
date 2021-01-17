@@ -109,6 +109,13 @@ class OffPolicyModel(BaseModel):
         self.num_timesteps = 0
 
 
+    def on_step(self):
+        """
+        Simple callback for each step we take in the environment
+        """
+        pass
+
+
     def train_dataloader(self):
         return OffPolicyDataloader(self)
 
@@ -122,6 +129,7 @@ class OffPolicyModel(BaseModel):
         i = 0
         total_episodes = 0
 
+        self.eval()
         while i < self.train_freq or total_episodes < self.episodes_per_rollout:
             if self.use_sde and self.sde_sample_freq > 0 and i % self.sde_sample_freq == 0:
                 # Sample a new noise matrix
@@ -158,6 +166,8 @@ class OffPolicyModel(BaseModel):
             if dones:
                 total_episodes += 1
 
+            self.on_step()
+        self.train()
 
 
 class OffPolicyDataloader:

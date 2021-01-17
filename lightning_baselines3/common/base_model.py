@@ -208,7 +208,9 @@ class BaseModel(pl.LightningModule):
 
     def training_epoch_end(self, outputs):
         """" Run the evaluation function """
+        self.eval()
         rewards, lengths = self.evaluate(self.num_eval_episodes)
+        self.train()
         self.log_dict({
             'val_reward_mean': np.mean(rewards),
             'val_reward_std': np.std(rewards),

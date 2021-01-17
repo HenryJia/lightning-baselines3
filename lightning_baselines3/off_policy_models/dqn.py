@@ -55,12 +55,9 @@ class DQN(OffPolicyModel):
         episodes_per_rollout: int = -1,
         num_rollouts: int = 1,
         gradient_steps: int = 1,
-        target_update_interval: int = 2500,
+        target_update_interval: int = 10000,
         num_eval_episodes: int = 100,
         gamma: float = 0.99,
-        use_sde: bool = False,
-        sde_sample_freq: int = -1,
-        use_sde_at_warmup: bool = False,
         verbose: int = 0,
         monitor_wrapper: bool = True,
         seed: Optional[int] = None,
@@ -78,13 +75,14 @@ class DQN(OffPolicyModel):
             num_eval_episodes=num_eval_episodes,
             gamma=gamma,
             verbose=verbose,
-            support_multi_env=True,
             monitor_wrapper=monitor_wrapper,
             seed=seed,
-            use_sde=use_sde,
-            use_sde_at_warmup=use_sde_at_warmup,
-            sde_sample_freq=sde_sample_freq
+            use_sde=False, # DQN Does not support SDE since DQN only supports Discrete actions spaces
+            use_sde_at_warmup=False,
+            sde_sample_freq=-1
         )
+
+        assert isinstance(self.action_space, spaces.Discrete), "DQN only supports environments with Discrete and Box action spaces"
 
         self.target_update_interval = target_update_interval
 
@@ -109,6 +107,7 @@ class DQN(OffPolicyModel):
 
 
     def training_step(self, batch, batch_idx):
+
         if float(self.num_timesteps - self.update_timestep) / self.target_update_interval > 1:
             self.update_target()
             self.update_timestep = self.num_timesteps
@@ -116,10 +115,12 @@ class DQN(OffPolicyModel):
         with torch.no_grad():
             target_q = self.forward_target(batch.next_observations)
             target_q = torch.max(target_q, dim=1, keepdims=True)[0]
-            target_q = batch.rewards + (1 - batch.dones) * self.gamma * self.target_q
+            target_q = batch.rewards + (1 - batch.dones) * self.gamma * target_q
 
         current_q = self(batch.observations)
         current_q = torch.gather(current_q, dim=1, index=batch.actions.long())
 
         loss = F.smooth_l1_loss(current_q, target_q)
+        if self.num_timesteps < self.warmup_length:
+            loss = loss * 0
         return loss

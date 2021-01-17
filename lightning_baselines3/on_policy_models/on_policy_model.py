@@ -97,6 +97,7 @@ class OnPolicyModel(BaseModel):
         if self.use_sde:
             self.reset_noise(self.env.num_envs)
 
+        self.eval()
         for i in range(self.buffer_length):
             if self.use_sde and self.sde_sample_freq > 0 and i % self.sde_sample_freq == 0:
                 # Sample a new noise matrix
@@ -132,6 +133,7 @@ class OnPolicyModel(BaseModel):
 
         samples = self.rollout_buffer.finalize(values, dones)
         self.rollout_buffer.reset()
+        self.train()
         return samples
 
 

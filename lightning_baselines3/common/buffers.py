@@ -142,11 +142,13 @@ class ReplayBuffer(BaseBuffer):
             batch_inds = np.random.randint(0, self.pos, size=self.batch_size)
 
         next_obs = self.observations[(batch_inds + 1) % self.buffer_size, 0, :]
-        # Simple normalisation using the whole buffer
-        if self.full:
-            rewards = (self.rewards[batch_inds] - np.mean(self.rewards)) / np.std(self.rewards)
-        else:
-            rewards = (self.rewards[batch_inds] - np.mean(self.rewards[:self.pos + 1])) / np.std(self.rewards[:self.pos + 1])
+
+        # Disable normalisation for now, it would break something like cartpole
+        #if self.full:
+            #rewards = (self.rewards[batch_inds] - np.mean(self.rewards)) / (np.std(self.rewards) + 1e-6)
+        #else:
+            #rewards = (self.rewards[batch_inds] - np.mean(self.rewards[:self.pos])) / (np.std(self.rewards[:self.pos]) + 1e-6)
+        rewards = self.rewards[batch_inds]
 
         return ReplayBufferSamples(
             torch.as_tensor(self.observations[batch_inds, 0, :]),
