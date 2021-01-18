@@ -146,6 +146,7 @@ if __name__ == '__main__':
             env.render(mode='human')
             env.reset()
         model = Model.load_from_checkpoint(args.model_fn, env=env, eval_env=env)
+        model.eval()
 
         # Warning: for some reason PyBullet environments are hardcoded to record at 320x240, and there's no easy way to deal with this
         rewards, lengths = model.evaluate(num_eval_episodes=10, render=True, record=True, record_fn=args.video_fn)
