@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 from setuptools import setup
 
 with open(os.path.join("lightning_baselines3", "version.txt"), "r") as file_handler:
