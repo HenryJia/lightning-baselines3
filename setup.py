@@ -2,9 +2,13 @@
 
 from setuptools import setup
 
+with open(os.path.join("lightning_baselines3", "version.txt"), "r") as file_handler:
+    __version__ = file_handler.read().strip()
+
 setup(
     name='lightning_baselines3',
     packages=['lightning_baselines3'],
+    package_data={"lightning_baselines3": ["py.typed", "version.txt"]},
     python_requires=">=3.6",
     install_requires=[
         "gym>=0.17",

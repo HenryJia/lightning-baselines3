@@ -1,7 +1,7 @@
 WARNING: Lightning Baselines3 is currently in a very early alpha version. It's not finished by any means, and there will be breaking changes before 1.0 is released
 # Lightning Baselines3
 
-Lightning Baselines3 (LB3) is a set of reliable implementations of reinforcement learning algorithms built on top of PyTorch Lightning. It is adapted from Stable Baselines3
+Lightning Baselines3 (LB3) is a set of reliable and modular implementations of reinforcement learning algorithms built on top of PyTorch Lightning. It is adapted from Stable Baselines3
 
 Lightning baselines3 is designed to be a simpler, faster, and more modular adaption of Stable Baselines through using PyTorch Lightning. It is designed to work with PyTorch Lightning v1.1.0 and above to allow fast and reproducible training of RL algorithms on Gym style environments.
 
