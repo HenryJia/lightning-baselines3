@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Lightning-Baselines3 Docs - Reliable and Modular Reinforcement Learning Implementations
-=======================================================================================
+Welcome to Lightning-Baselines3 docs - Reliable and Modular Reinforcement Learning Implementations
+==================================================================================================
 
 `Lightning Baselines3 (LB3) <https://github.com/HenryJia/lightning-baselines3>`_ is a set of reliable and modular implementations of reinforcement learning algorithms built on top of PyTorch Lightning. It is adapted from `Stable Baselines3 (SB3) <https://github.com/DLR-RM/stable-baselines3>`_
 
@@ -28,7 +28,9 @@ Coming Soon
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: User Guide
+
+   guide/install
 
 
 Citing Stable Baselines3
