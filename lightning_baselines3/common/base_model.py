@@ -215,15 +215,13 @@ class BaseModel(pl.LightningModule):
         self._last_dones = np.zeros((self.env.num_envs,), dtype=np.bool)  # type: Optional[np.ndarray]
 
 
-    def set_random_seed(self, seed: Optional[int] = None) -> None:
+    def set_random_seed(self, seed: int) -> None:
         """
         Set the seed of the pseudo-random generators
         (python, numpy, pytorch, gym, action_space)
 
         :param seed: (int)
         """
-        if seed is None:
-            return
         set_random_seed(seed, using_cuda=self.device.type == torch.device("cuda").type)
         self.action_space.seed(seed)
         if self.env:

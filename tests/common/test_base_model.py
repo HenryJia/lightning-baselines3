@@ -35,11 +35,3 @@ def test_base_model_checks():
 
     with pytest.raises(ValueError):
         model = BaseModel("CartPole-v1", "CartPole-v1", use_sde=True)
-
-
-def test_evaluate_video():
-    model = DummyModel("CartPole-v1", "CartPole-v1")
-    model.evaluate(1, deterministic=True, render=False, record=True, record_fn='test_recording.mp4')
-
-    assert os.path.isfile('test_recording.mp4')
-    os.remove('test_recording.mp4')
