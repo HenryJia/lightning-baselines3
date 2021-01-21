@@ -86,6 +86,7 @@ def test_on_policy_model(env_id):
         gae_lambda=0.95,
         use_sde=False,
         sde_sample_freq=-1,
+        verbose=1,
         seed=1234)
 
     trainer = pl.Trainer(max_epochs=5, terminate_on_nan=True)

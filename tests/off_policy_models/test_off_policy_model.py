@@ -86,6 +86,7 @@ def test_off_policy_model(env_id):
         gamma=0.9,
         use_sde=False,
         sde_sample_freq=-1,
+        verbose=1,
         seed=1234)
 
     trainer = pl.Trainer(max_epochs=5, terminate_on_nan=True)
