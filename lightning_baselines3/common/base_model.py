@@ -19,12 +19,7 @@ import pytorch_lightning as pl
 
 from lightning_baselines3.common.monitor import Monitor
 from lightning_baselines3.common.type_aliases import GymEnv
-from lightning_baselines3.common.utils import (
-    check_for_correct_spaces,
-    get_schedule_fn,
-    set_random_seed,
-    update_learning_rate,
-)
+from lightning_baselines3.common.utils import set_random_seed
 from lightning_baselines3.common.vec_env import VecEnv
 from lightning_baselines3.common.vec_env import is_wrapped, wrap_env
 

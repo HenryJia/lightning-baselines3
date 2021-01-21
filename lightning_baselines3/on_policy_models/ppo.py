@@ -9,7 +9,7 @@ from torch import distributions
 
 from lightning_baselines3.on_policy_models.on_policy_model import OnPolicyModel
 from lightning_baselines3.common.type_aliases import GymEnv
-from lightning_baselines3.common.utils import explained_variance, get_schedule_fn
+from lightning_baselines3.common.utils import explained_variance
 
 
 

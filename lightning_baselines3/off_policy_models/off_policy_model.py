@@ -12,7 +12,6 @@ import pytorch_lightning as pl
 from lightning_baselines3.common.base_model import BaseModel
 from lightning_baselines3.common.buffers import ReplayBuffer, ReplayBufferSamples
 from lightning_baselines3.common.type_aliases import GymEnv
-from lightning_baselines3.common.utils import safe_mean
 from lightning_baselines3.common.vec_env import VecEnv
 
 
