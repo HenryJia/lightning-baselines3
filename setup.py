@@ -17,6 +17,8 @@ setup(
         "pandas",
         "torch>=1.3",
         "pytorch_lightning>=1.1.0",
+        # For render
+        "opencv-python",
     ],
     extras_require={
         "tests": [
@@ -31,8 +33,6 @@ setup(
             "flake8>=3.8",
             # Sort imports
             "isort>=5.0",
-            # Reformat
-            "black",
         ],
         "docs": [
             "sphinx",
@@ -43,17 +43,8 @@ setup(
             # Type hints support
             "sphinx-autodoc-typehints",
         ],
-        "extra": [
-            # For render
-            "opencv-python",
-            # For atari games,
-            "atari_py~=0.2.0",
-            "pillow",
-            # Checking memory taken by replay buffer
-            "psutil",
-        ],
     },
-    version='0.1.0',
+    version=__version__,
     description='Adaptation of Stable_Baselines3 for Pytorch Lightning',
     author='Hengjian (Henry) Jia',
     author_email='henryjia18@gmail.com',
