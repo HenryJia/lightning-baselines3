@@ -102,7 +102,7 @@ class BaseModel(pl.LightningModule):
                 "Error: the model does not support multiple envs; it requires " "a single vectorized environment."
             )
 
-        if self.use_sde and not isinstance(self.observation_space, gym.spaces.Box):
+        if self.use_sde and not isinstance(self.action_space, gym.spaces.Box):
             raise ValueError("generalized State-Dependent Exploration (gSDE) can only be used with continuous actions.")
 
         self.reset()
@@ -147,7 +147,6 @@ class BaseModel(pl.LightningModule):
         episode_rewards, episode_lengths = [], []
 
         if record:
-            assert render, "Cannot record without rendering"
             recorder = VideoRecorder(env=self.eval_env, path=record_fn)
 
         not_reseted = True
@@ -172,7 +171,6 @@ class BaseModel(pl.LightningModule):
                     action = np.clip(action, self.action_space.low, self.action_space.high)
                 elif isinstance(self.action_space, gym.spaces.Discrete):
                     action = action.astype(np.int32)
-                    print(action, self.eval_env)
 
                 obs, reward, done, info = self.eval_env.step(action)
                 episode_rewards[-1] += reward
@@ -180,8 +178,8 @@ class BaseModel(pl.LightningModule):
 
                 if render:
                     self.eval_env.render()
-                    if record:
-                        recorder.capture_frame()
+                if record:
+                    recorder.capture_frame()
 
             if is_wrapped(self.eval_env, Monitor):
                 # Do not trust "done" with episode endings.
