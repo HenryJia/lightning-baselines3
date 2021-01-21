@@ -81,7 +81,6 @@ def test_ppo_model(env_id):
         gae_lambda=0.95,
         use_sde=False,
         sde_sample_freq=-1,
-        monitor_wrapper=True,
         seed=1234)
 
     trainer = pl.Trainer(max_epochs=5, terminate_on_nan=True)

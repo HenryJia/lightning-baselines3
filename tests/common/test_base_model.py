@@ -18,4 +18,4 @@ def test_env_auto_monitor_wrap():
     assert isinstance(model.env.envs[0], Monitor)
 
     model = BaseModel("Pendulum-v0", "Pendulum-v0")
-    assert isinstance(model.env.envs[0], Monitor)
+    assert not isinstance(model.env.envs[0], Monitor)

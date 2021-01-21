@@ -24,7 +24,7 @@ from lightning_baselines3.common.vec_env import VecEnv
 from lightning_baselines3.common.vec_env import is_wrapped, wrap_env
 
 
-def maybe_make_env(env: Union[GymEnv, str], monitor_wrapper: bool, verbose: int) -> Optional[GymEnv]:
+def maybe_make_env(env: Union[GymEnv, str], verbose: int) -> Optional[GymEnv]:
     """If env is a string, make the environment; otherwise, return env.
 
     :param env: (Union[GymEnv, str, None]) The environment to learn from.
@@ -36,8 +36,6 @@ def maybe_make_env(env: Union[GymEnv, str], monitor_wrapper: bool, verbose: int)
         if verbose >= 1:
             print(f"Creating environment from the given name '{env}'")
         env = gym.make(env)
-        if monitor_wrapper:
-            env = Monitor(env, filename=None)
 
     return env
 
@@ -70,7 +68,6 @@ class BaseModel(pl.LightningModule):
         num_eval_episodes: int = 100,
         verbose: int = 0,
         support_multi_env: bool = False,
-        monitor_wrapper: bool = True,
         seed: Optional[int] = None,
         use_sde: bool = False,
     ):
@@ -85,8 +82,8 @@ class BaseModel(pl.LightningModule):
         self.use_sde = use_sde
 
         # Create the env for training and evaluation
-        self.env = maybe_make_env(env, monitor_wrapper, self.verbose)
-        self.eval_env = maybe_make_env(eval_env, monitor_wrapper, self.verbose)
+        self.env = maybe_make_env(env, self.verbose)
+        self.eval_env = maybe_make_env(eval_env, self.verbose)
 
         # Wrap the env if necessary
         self.env = wrap_env(self.env, self.verbose)

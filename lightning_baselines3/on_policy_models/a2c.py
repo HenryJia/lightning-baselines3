@@ -77,7 +77,6 @@ class A2C(OnPolicyModel):
         use_sde: bool = False,
         sde_sample_freq: int = -1,
         verbose: int = 0,
-        monitor_wrapper: bool = True,
         seed: Optional[int] = None,
     ):
         super(A2C, self).__init__(
@@ -93,7 +92,6 @@ class A2C(OnPolicyModel):
             use_sde=use_sde,
             sde_sample_freq=sde_sample_freq,
             verbose=verbose,
-            monitor_wrapper=monitor_wrapper,
             seed=seed
         )
 

@@ -70,7 +70,6 @@ class Model(PPO):
         parser.add_argument('--sde_sample_freq', type=int, default=-1)
         parser.add_argument('--target_kl', type=float)
         parser.add_argument('--verbose', action='store_true')
-        parser.add_argument('--monitor_wrapper', action='store_true')
         parser.add_argument('--seed', type=int)
         return parser
 

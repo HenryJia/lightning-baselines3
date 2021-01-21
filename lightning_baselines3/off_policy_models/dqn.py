@@ -59,7 +59,6 @@ class DQN(OffPolicyModel):
         num_eval_episodes: int = 100,
         gamma: float = 0.99,
         verbose: int = 0,
-        monitor_wrapper: bool = True,
         seed: Optional[int] = None,
     ):
         super(DQN, self).__init__(
@@ -75,7 +74,6 @@ class DQN(OffPolicyModel):
             num_eval_episodes=num_eval_episodes,
             gamma=gamma,
             verbose=verbose,
-            monitor_wrapper=monitor_wrapper,
             seed=seed,
             use_sde=False, # DQN Does not support SDE since DQN only supports Discrete actions spaces
             use_sde_at_warmup=False,

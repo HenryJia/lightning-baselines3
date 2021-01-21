@@ -64,7 +64,6 @@ class Model(DQN):
         parser.add_argument('--num_eval_episodes', type=int, default=10)
         parser.add_argument('--gamma', type=float, default=0.99)
         parser.add_argument('--verbose', action='store_true')
-        parser.add_argument('--monitor_wrapper', action='store_true')
         parser.add_argument('--seed', type=int)
         return parser
 

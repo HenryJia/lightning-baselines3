@@ -55,7 +55,6 @@ class OnPolicyModel(BaseModel):
         use_sde: bool = False,
         sde_sample_freq: int = -1,
         verbose: int = 0,
-        monitor_wrapper: bool = True,
         seed: Optional[int] = None,
     ):
         super(OnPolicyModel, self).__init__(
@@ -64,7 +63,6 @@ class OnPolicyModel(BaseModel):
             num_eval_episodes=num_eval_episodes,
             verbose=verbose,
             support_multi_env=True,
-            monitor_wrapper=monitor_wrapper,
             seed=seed,
             use_sde=use_sde,
         )

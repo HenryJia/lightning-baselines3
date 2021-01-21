@@ -59,7 +59,6 @@ class OffPolicyModel(BaseModel):
         sde_sample_freq: int = -1,
         use_sde_at_warmup: bool = False,
         verbose: int = 0,
-        monitor_wrapper: bool = True,
         seed: Optional[int] = None,
     ):
         super(OffPolicyModel, self).__init__(
@@ -68,7 +67,6 @@ class OffPolicyModel(BaseModel):
             num_eval_episodes=num_eval_episodes,
             verbose=verbose,
             support_multi_env=True,
-            monitor_wrapper=monitor_wrapper,
             seed=seed,
             use_sde=use_sde,
         )

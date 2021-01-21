@@ -66,7 +66,6 @@ def test_off_dqn_model(env_id):
         num_rollouts=10,
         num_eval_episodes=10,
         gamma=0.9,
-        monitor_wrapper=True,
         seed=1234)
 
     trainer = pl.Trainer(max_epochs=5, terminate_on_nan=True)

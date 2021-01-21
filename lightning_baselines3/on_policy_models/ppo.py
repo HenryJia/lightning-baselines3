@@ -80,7 +80,6 @@ class PPO(OnPolicyModel):
         sde_sample_freq: int = -1,
         target_kl: Optional[float] = None,
         verbose: int = 0,
-        monitor_wrapper: bool = True,
         seed: Optional[int] = None,
     ):
         super(PPO, self).__init__(
@@ -96,7 +95,6 @@ class PPO(OnPolicyModel):
             use_sde=use_sde,
             sde_sample_freq=sde_sample_freq,
             verbose=verbose,
-            monitor_wrapper=monitor_wrapper,
             seed=seed
         )
 
