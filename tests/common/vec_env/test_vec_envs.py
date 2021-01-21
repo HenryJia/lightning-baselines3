@@ -96,10 +96,10 @@ def test_vec_env_monitor_kwargs():
     assert env.get_attr("allow_early_resets")[0] is True
 
 
-def vec_env_wrapper():
+def test_vec_env_wrapper():
     env = gym.make('CartPole-v1')
     env2 = Monitor(env)
-    assert env == env.unwrapped
+    assert env.unwrapped == env2.unwrapped
 
 
 def test_custom_vec_env(tmp_path):
