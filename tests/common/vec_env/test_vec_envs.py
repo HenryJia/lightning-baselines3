@@ -96,6 +96,12 @@ def test_vec_env_monitor_kwargs():
     assert env.get_attr("allow_early_resets")[0] is True
 
 
+def vec_env_wrapper():
+    env = gym.make('CartPole-v1')
+    env2 = Monitor(env)
+    assert env == env.unwrapped
+
+
 def test_custom_vec_env(tmp_path):
     """
     Stand alone test for a special case (passing a custom VecEnv class) to avoid doubling the number of tests.
@@ -121,6 +127,7 @@ def test_custom_vec_env(tmp_path):
     # This should fail because DummyVecEnv does not have any keyword argument
     with pytest.raises(TypeError):
         make_vec_env("CartPole-v1", n_envs=1, vec_env_kwargs={"dummy": False})
+
 
 @pytest.mark.parametrize("vec_env_class", VEC_ENV_CLASSES)
 @pytest.mark.parametrize("vec_env_wrapper", VEC_ENV_WRAPPERS)
