@@ -82,7 +82,7 @@ def test_a2c_model(env_id):
         use_sde=False,
         sde_sample_freq=-1,
         monitor_wrapper=True,
-        seed=None)
+        seed=1234)
 
     trainer = pl.Trainer(max_epochs=5, terminate_on_nan=True)
     trainer.fit(model)
