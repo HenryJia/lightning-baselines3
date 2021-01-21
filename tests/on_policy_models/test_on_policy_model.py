@@ -89,5 +89,5 @@ def test_on_policy_model(env_id):
         verbose=1,
         seed=1234)
 
-    trainer = pl.Trainer(max_epochs=5, terminate_on_nan=True)
+    trainer = pl.Trainer(max_epochs=2, terminate_on_nan=True)
     trainer.fit(model)

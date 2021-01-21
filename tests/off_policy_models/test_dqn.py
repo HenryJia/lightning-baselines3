@@ -68,5 +68,5 @@ def test_off_dqn_model(env_id):
         gamma=0.9,
         seed=1234)
 
-    trainer = pl.Trainer(max_epochs=5, terminate_on_nan=True)
+    trainer = pl.Trainer(max_epochs=2, terminate_on_nan=True)
     trainer.fit(model)
