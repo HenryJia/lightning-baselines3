@@ -14,49 +14,6 @@ import torch.nn.functional as F
 from lightning_baselines3.common.type_aliases import GymEnv
 from lightning_baselines3.common.vec_env import is_image_space
 
-# Check if tensorboard is available for pytorch
-try:
-    from torch.utils.tensorboard import SummaryWriter
-except ImportError:
-    SummaryWriter = None
-
-
-def preprocess_obs(obs: torch.Tensor, observation_space: spaces.Space, normalize_images: bool = True) -> torch.Tensor:
-    """
-    Preprocess observation to be to a neural network.
-    For images, it normalizes the values by dividing them by 255 (to have values in [0, 1])
-    For discrete observations, it create a one hot vector.
-
-    :param obs: (torch.Tensor) Observation
-    :param observation_space: (spaces.Space)
-    :param normalize_images: (bool) Whether to normalize images or not
-        (True by default)
-    :return: (torch.Tensor)
-    """
-    if isinstance(observation_space, spaces.Box):
-        if is_image_space(observation_space) and normalize_images:
-            return obs.float() / 255.0
-        return obs.float()
-
-    elif isinstance(observation_space, spaces.Discrete):
-        # One hot encoding and convert to float to avoid errors
-        return F.one_hot(obs.long(), num_classes=observation_space.n).float()
-
-    elif isinstance(observation_space, spaces.MultiDiscrete):
-        # Tensor concatenation of one hot encodings of each Categorical sub-space
-        return torch.cat(
-            [
-                F.one_hot(obs_.long(), num_classes=int(observation_space.nvec[idx])).float()
-                for idx, obs_ in enumerate(torch.split(obs.long(), 1, dim=1))
-            ],
-            dim=-1,
-        ).view(obs.shape[0], sum(observation_space.nvec))
-
-    elif isinstance(observation_space, spaces.MultiBinary):
-        return obs.float()
-
-    else:
-        raise NotImplementedError()
 
 
 def get_obs_shape(observation_space: spaces.Space) -> Tuple[int, ...]:
