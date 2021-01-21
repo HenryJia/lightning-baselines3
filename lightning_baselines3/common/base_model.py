@@ -175,6 +175,7 @@ class BaseModel(pl.LightningModule):
                     action = np.clip(action, self.action_space.low, self.action_space.high)
                 elif isinstance(self.action_space, gym.spaces.Discrete):
                     action = action.astype(np.int32)
+                    print(action, self.eval_env)
 
                 obs, reward, done, info = self.eval_env.step(action)
                 episode_rewards[-1] += reward

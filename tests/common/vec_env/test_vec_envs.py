@@ -1,13 +1,16 @@
 import collections
+import os
 import functools
 import itertools
+import shutil
 import multiprocessing
 
 import gym
 import numpy as np
 import pytest
 
-from lightning_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecFrameStack
+from lightning_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecFrameStack, make_vec_env
+from lightning_baselines3.common.monitor import Monitor
 
 N_ENVS = 3
 VEC_ENV_CLASSES = [DummyVecEnv, SubprocVecEnv]
@@ -58,6 +61,66 @@ class CustomGymEnv(gym.Env):
         """
         return np.ones((dim_0, dim_1))
 
+
+@pytest.mark.parametrize("env_id", ["CartPole-v1", lambda: gym.make("CartPole-v1")])
+@pytest.mark.parametrize("n_envs", [1, 2])
+@pytest.mark.parametrize("vec_env_cls", [None, SubprocVecEnv])
+@pytest.mark.parametrize("wrapper_class", [None, gym.wrappers.TimeLimit])
+def test_make_vec_env(env_id, n_envs, vec_env_cls, wrapper_class):
+    env = make_vec_env(env_id, n_envs, vec_env_cls=vec_env_cls, wrapper_class=wrapper_class, monitor_dir=None, seed=0)
+
+    assert env.num_envs == n_envs
+
+    if vec_env_cls is None:
+        assert isinstance(env, DummyVecEnv)
+        if wrapper_class is not None:
+            assert isinstance(env.envs[0], wrapper_class)
+        else:
+            assert isinstance(env.envs[0], Monitor)
+    else:
+        assert isinstance(env, SubprocVecEnv)
+    # Kill subprocesses
+    env.close()
+
+
+def test_vec_env_kwargs():
+    env = make_vec_env("MountainCarContinuous-v0", n_envs=1, seed=0, env_kwargs={"goal_velocity": 0.11})
+    assert env.get_attr("goal_velocity")[0] == 0.11
+
+
+def test_vec_env_monitor_kwargs():
+    env = make_vec_env("MountainCarContinuous-v0", n_envs=1, seed=0, monitor_kwargs={"allow_early_resets": False})
+    assert env.get_attr("allow_early_resets")[0] is False
+
+    env = make_vec_env("MountainCarContinuous-v0", n_envs=1, seed=0, monitor_kwargs={"allow_early_resets": True})
+    assert env.get_attr("allow_early_resets")[0] is True
+
+
+def test_custom_vec_env(tmp_path):
+    """
+    Stand alone test for a special case (passing a custom VecEnv class) to avoid doubling the number of tests.
+    """
+    monitor_dir = tmp_path / "test_make_vec_env/"
+    env = make_vec_env(
+        "CartPole-v1",
+        n_envs=1,
+        monitor_dir=monitor_dir,
+        seed=0,
+        vec_env_cls=SubprocVecEnv,
+        vec_env_kwargs={"start_method": None},
+    )
+
+    assert env.num_envs == 1
+    assert isinstance(env, SubprocVecEnv)
+    assert os.path.isdir(monitor_dir)
+    # Kill subprocess
+    env.close()
+    # Cleanup folder
+    shutil.rmtree(monitor_dir)
+
+    # This should fail because DummyVecEnv does not have any keyword argument
+    with pytest.raises(TypeError):
+        make_vec_env("CartPole-v1", n_envs=1, vec_env_kwargs={"dummy": False})
 
 @pytest.mark.parametrize("vec_env_class", VEC_ENV_CLASSES)
 @pytest.mark.parametrize("vec_env_wrapper", VEC_ENV_WRAPPERS)
