@@ -9,7 +9,7 @@ import gym
 import numpy as np
 import pytest
 
-from lightning_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecFrameStack, make_vec_env
+from lightning_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecFrameStack, VecCheckNan, make_vec_env
 from lightning_baselines3.common.monitor import Monitor
 
 N_ENVS = 3
@@ -97,17 +97,17 @@ def test_vec_env_monitor_kwargs():
 
 
 def test_vec_env_wrapper():
-    env = gym.make('CartPole-v1')
-    env2 = Monitor(env)
+    env = make_vec_env('CartPole-v1')
+    env2 = VecCheckNan(env)
     assert env.unwrapped == env2.unwrapped
 
     env2.close()
 
 
 def test_vec_env_getattr():
-    env = gym.make('CartPole-v1')
+    env = make_vec_env('CartPole-v1')
     env.foo = 123
-    env2 = Monitor(env)
+    env2 = VecCheckNan(env)
     assert env.foo == env2.foo
 
     env2.close()
