@@ -101,6 +101,17 @@ def test_vec_env_wrapper():
     env2 = Monitor(env)
     assert env.unwrapped == env2.unwrapped
 
+    env2.close()
+
+
+def test_vec_env_getattr():
+    env = gym.make('CartPole-v1')
+    env.foo = 123
+    env2 = Monitor(env)
+    assert env.foo == env2.foo
+
+    env2.close()
+
 
 def test_custom_vec_env(tmp_path):
     """
