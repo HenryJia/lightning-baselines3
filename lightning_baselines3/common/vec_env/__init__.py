@@ -10,7 +10,6 @@ from lightning_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from lightning_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 from lightning_baselines3.common.vec_env.vec_check_nan import VecCheckNan
 from lightning_baselines3.common.vec_env.vec_frame_stack import VecFrameStack
-from lightning_baselines3.common.vec_env.vec_transpose import VecTransposeImage
 from lightning_baselines3.common.vec_env.vec_video_recorder import VecVideoRecorder
 
 from lightning_baselines3.common.vec_env.utils import is_image_space
@@ -22,10 +21,6 @@ def wrap_env(env: Union[gym.Env, VecEnv], verbose: int = 0) -> VecEnv:
             print("Wrapping the env in a DummyVecEnv.")
         env = DummyVecEnv([lambda: env])
 
-    if is_image_space(env.observation_space) and not isinstance(env, VecTransposeImage):
-        if verbose >= 1:
-            print("Wrapping the env in a VecTransposeImage.")
-        env = VecTransposeImage(env)
     return env
 
 

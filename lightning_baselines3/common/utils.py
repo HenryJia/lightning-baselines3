@@ -13,7 +13,6 @@ import torch.nn.functional as F
 
 from lightning_baselines3.common.type_aliases import GymEnv
 from lightning_baselines3.common.vec_env import is_image_space
-from lightning_baselines3.common.vec_env import VecTransposeImage
 
 # Check if tensorboard is available for pytorch
 try:
