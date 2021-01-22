@@ -22,8 +22,7 @@ TL;DR
 
 
 Like any other subject, if you want to work with RL, you should first read about it (we have a dedicated `resource page <rl.html>`_ to get you started)
-to understand what you are using. We also recommend you read Stable Baselines3 (SB3) documentation and do the `tutorial <https://github.com/araffin/rl-tutorial-jnrr19/tree/sb3>`_.
-It covers basic usage and guide you towards more advanced concepts of the library (e.g. callbacks and wrappers).
+to understand what you are using. A tutorial will be produced soon.
 
 Reinforcement Learning differs from other machine learning methods in several ways. The data used to train the agent is collected
 through interactions with the environment by the agent itself (compared to supervised learning where you have a fixed dataset for instance).
@@ -36,8 +35,9 @@ For this reason, you should always do several runs to have quantitative results.
 Good results in RL are generally dependent on finding appropriate hyperparameters. Recent algorithms (PPO, SAC, TD3) normally require little hyperparameter tuning,
 however, *don't expect the default ones to work* on any environment.
 
-Therefore, we *highly recommend you* to take a look at the `RL zoo <https://github.com/DLR-RM/rl-baselines3-zoo>`_ (or the original papers) for tuned hyperparameters.
-A best practice when you apply RL to a new problem is to do automatic hyperparameter optimization. Again, this is included in the `RL zoo <https://github.com/DLR-RM/rl-baselines3-zoo>`_.
+..
+   Therefore, we *highly recommend you* to take a look at the `RL zoo <https://github.com/DLR-RM/rl-baselines3-zoo>`_ (or the original papers) for tuned hyperparameters.
+    A best practice when you apply RL to a new problem is to do automatic hyperparameter optimization. Again, this is included in the `RL zoo <https://github.com/DLR-RM/rl-baselines3-zoo>`_.
 
 When applying RL to a custom problem, you should always normalize the input to the agent (e.g. using VecNormalize for PPO/A2C)
 and look at common preprocessing done on other environments (e.g. for `Atari <https://danieltakeshi.github.io/2016/11/25/frame-skipping-and-preprocessing-for-deep-q-networks-on-atari-2600-games/>`_, frame-stack, ...).
@@ -71,7 +71,7 @@ How to evaluate an RL algorithm?
 .. note::
 
   Pay attention to environment wrappers when evaluating your agent and comparing results to others' results. Modifications to episode rewards
-  or lengths may also affect evaluation results which may not be desirable. Check ``evaluate_policy`` helper function in :ref:`Evaluation Helper <eval>` section.
+  or lengths may also affect evaluation results which may not be desirable.
 
 Because most algorithms use exploration noise during training, you need a separate test environment to evaluate the performance
 of your agent at a given time. It is recommended to periodically evaluate your agent for ``n`` test episodes (``n`` is usually between 5 and 20)
@@ -84,8 +84,6 @@ and average the reward per episode to have a good estimate.
 As some policy are stochastic by default (e.g. A2C or PPO), you should also try to set `deterministic=True` when calling the `.predict()` method,
 this frequently leads to better performance.
 Looking at the training curve (episode reward function of the timesteps) is a good proxy but underestimates the agent true performance.
-
-
 
 We suggest you reading `Deep Reinforcement Learning that Matters <https://arxiv.org/abs/1709.06560>`_ for a good discussion about RL evaluation.
 
