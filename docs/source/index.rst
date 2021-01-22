@@ -32,7 +32,8 @@ Coming Soon
 
    guide/install
    guide/quickstart
-
+   guide/rl_tips
+   guide/custom_env
 
 Citing Stable Baselines3
 ------------------------
