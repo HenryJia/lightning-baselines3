@@ -65,13 +65,13 @@ class A2C(OnPolicyModel):
         self,
         env: Union[GymEnv, str],
         eval_env: Union[GymEnv, str],
-        buffer_length: int = 2048,
-        num_rollouts: int = 1,
-        batch_size: int = 64,
-        epochs_per_rollout: int = 10,
+        buffer_length: int = 5,
+        num_rollouts: int = 100,
+        batch_size: int = 128,
+        epochs_per_rollout: int = 1,
         num_eval_episodes: int = 100,
         gamma: float = 0.99,
-        gae_lambda: float = 0.95,
+        gae_lambda: float = 1.0,
         value_coef: float = 0.5,
         entropy_coef: float = 0.0,
         use_sde: bool = False,
@@ -107,11 +107,11 @@ class A2C(OnPolicyModel):
         log_probs = dist.log_prob(batch.actions)
         values = values.flatten()
 
-        advantages = batch.advantages
+        advantages = batch.advantages.detach()
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         policy_loss = -(advantages * log_probs).mean()
-        value_loss = F.mse_loss(batch.returns, values)
+        value_loss = F.mse_loss(batch.returns.detach(), values)
         entropy_loss = -dist.entropy().mean()
 
         loss = policy_loss + self.value_coef * value_loss + self.entropy_coef * entropy_loss

@@ -108,7 +108,9 @@ def test_vec_env_getattr():
     env = make_vec_env('CartPole-v1')
     env.foo = 123
     env2 = VecCheckNan(env)
+    env2.bar = 123
     assert env.foo == env2.foo
+    assert env2.bar == 123
 
     env2.close()
 
