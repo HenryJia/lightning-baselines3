@@ -3,15 +3,15 @@ import numpy as np
 import pytest
 from gym import spaces
 
-from ...envs.bit_flipping_env import BitFlippingEnv
-from ...envs.identity_env import (
+from ..envs.bit_flipping_env import BitFlippingEnv
+from ..envs.identity_env import (
     FakeImageEnv,
     IdentityEnv,
     IdentityEnvBox,
     IdentityEnvMultiBinary,
     IdentityEnvMultiDiscrete,
 )
-from ...utils.env_checker import check_env
+from lightning_baselines3.common.env_checker import check_env
 
 ENV_CLASSES = [BitFlippingEnv, IdentityEnv, IdentityEnvBox, IdentityEnvMultiBinary, IdentityEnvMultiDiscrete, FakeImageEnv]
 

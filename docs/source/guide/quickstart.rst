@@ -51,14 +51,14 @@ Step 2: Define Your Model
             self.save_hyperparameters()
 
 
-        # This is for training the model, output the distribution and the corresponding value
+        # This is for training the model, output the distribution and the corresponding value function estimate
         def forward(self, x):
             out = self.actor(x)
             dist = distributions.Categorical(probs=out)
             return dist, self.critic(x).flatten()
 
 
-        # This is for inference and evaluation of our model
+        # We need this for inference and evaluation of our model
         def predict(self, x, deterministic=True):
             out = self.actor(x)
             if deterministic:
