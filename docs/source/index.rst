@@ -31,6 +31,7 @@ Coming Soon
    :caption: User Guide
 
    guide/install
+   guide/quickstart
 
 
 Citing Stable Baselines3
