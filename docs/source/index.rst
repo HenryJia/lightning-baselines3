@@ -37,6 +37,12 @@ Coming Soon
    guide/algos
    guide/custom_env
 
+.. toctree::
+  :maxdepth: 1
+  :caption: RL Algorithms
+
+  modules/base
+
 Citing Stable Baselines3
 ------------------------
 To cite this project in publications:

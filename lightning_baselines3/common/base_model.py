@@ -46,26 +46,24 @@ class BaseModel(pl.LightningModule):
     The base of RL algorithms
 
     :param env: (Union[GymEnv, str, None]) The environment to learn from
-                (if registered in Gym, can be str. Can be None for loading trained models)
-    :param learning_rate: (float or callable) learning rate for the optimizer,
-        it can be a function of the current progress remaining (from 1 to 0)
+        (if registered in Gym, can be str. Can be None for loading trained models)
+    :param eval_env: (Union[GymEnv, str, None]) The environment to learn from
+        (if registered in Gym, can be str. Can be None for loading trained models)
+    :param num_eval_episodes: (int) The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
+        (default: 10)
     :param verbose: (int) The verbosity level: 0 none, 1 training information, 2 debug
     :param support_multi_env: (bool) Whether the algorithm supports training
-        with multiple environments (as in A2C)
-    :param monitor_wrapper: (bool) When creating an environment, whether to wrap it
-        or not in a Monitor wrapper.
+        with multiple environments in parallel (default: False)
     :param seed: (Optional[int]) Seed for the pseudo random generators
     :param use_sde: (bool) Whether to use generalized State Dependent Exploration (gSDE)
         instead of action noise exploration (default: False)
-    :param sde_sample_freq: (int) Sample a new noise matrix every n steps when using gSDE
-        Default: -1 (only sample at the beginning of the rollout)
     """
 
     def __init__(
         self,
         env: Union[GymEnv, str],
         eval_env: Union[GymEnv, str],
-        num_eval_episodes: int = 100,
+        num_eval_episodes: int = 10,
         verbose: int = 0,
         support_multi_env: bool = False,
         seed: Optional[int] = None,
