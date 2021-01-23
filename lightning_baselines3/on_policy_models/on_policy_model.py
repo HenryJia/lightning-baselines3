@@ -21,24 +21,20 @@ class OnPolicyModel(BaseModel):
 
     :param env: (Gym environment or str) The environment to learn from (if registered in Gym, can be str)
     :param buffer_length: (int) Length of the buffer and the number of steps to run for each environment per update
+    :param num_rollouts: Number of rollouts to do per PyTorch Lightning epoch. This does not affect any training dynamic,
+        just how often we evaluate the model since evaluation happens at the end of each Lightning epoch
+    :param batch_size: Minibatch size for each gradient update
+    :param epochs_per_rollout: Number of epochs to optimise the loss for
+    :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
     :param gamma: (float) Discount factor
     :param gae_lambda: (float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator.
         Equivalent to classic advantage when set to 1.
-    :param ent_coef: (float) Entropy coefficient for the loss calculation
-    :param vf_coef: (float) Value function coefficient for the loss calculation
-    :param max_grad_norm: (float) The maximum value for the gradient clipping
     :param use_sde: (bool) Whether to use generalized State Dependent Exploration (gSDE)
-        instead of action noise exploration (default: False)
+        instead of action noise exploration
     :param sde_sample_freq: (int) Sample a new noise matrix every n steps when using gSDE
         Default: -1 (only sample at the beginning of the rollout)
-    :param sde_sample_freq: (bool) Whether to store gradients in the RolloutBuffer
-        Default: False
-    :param create_eval_env: (bool) Whether to create a second environment that will be
-        used for evaluating the agent periodically. (Only available when passing string for the environment)
-    :param monitor_wrapper: When creating an environment, whether to wrap it
-        or not in a Monitor wrapper.
-    :param policy_kwargs: (dict) additional arguments to be passed to the policy on creation
-    :param seed: (int) Seed for the pseudo random generators
+    :param verbose: The verbosity level: 0 none, 1 training information, 2 debug
+    :param seed: Seed for the pseudo random generators
     """
 
     def __init__(
