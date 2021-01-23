@@ -43,6 +43,7 @@ Coming Soon
 
   modules/base
   modules/a2c
+  modules/ppo
 
 Citing Stable Baselines3
 ------------------------
