@@ -232,7 +232,7 @@ class BaseModel(pl.LightningModule):
     :param seed: The random seed to set
     """
     def set_random_seed(self, seed: int) -> None:
-        set_random_seed(seed, using_cuda=self.device.type == torch.device("cuda").type)
+        set_random_seed(seed)
         self.action_space.seed(seed)
         if self.env:
             self.env.seed(seed)
