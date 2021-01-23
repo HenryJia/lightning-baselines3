@@ -107,6 +107,8 @@ class BaseModel(pl.LightningModule):
     def predict(self, obs: GymObs) -> np.ndarray:
         """
         Override this function with the predict function of your own model
+        :param obs: The input observations
+        :return: The chosen actions
         """
         raise NotImplementedError
 
