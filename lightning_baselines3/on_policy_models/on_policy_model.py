@@ -20,6 +20,8 @@ class OnPolicyModel(BaseModel):
     The base for On-Policy algorithms (ex: A2C/PPO).
 
     :param env: (Gym environment or str) The environment to learn from (if registered in Gym, can be str)
+    :param eval_env: The environment to evaluate on, must not be vectorised/parallelrised
+        (if registered in Gym, can be str. Can be None for loading trained models)
     :param buffer_length: (int) Length of the buffer and the number of steps to run for each environment per update
     :param num_rollouts: Number of rollouts to do per PyTorch Lightning epoch. This does not affect any training dynamic,
         just how often we evaluate the model since evaluation happens at the end of each Lightning epoch

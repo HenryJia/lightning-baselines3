@@ -18,7 +18,7 @@ from torch import nn
 import pytorch_lightning as pl
 
 from lightning_baselines3.common.monitor import Monitor
-from lightning_baselines3.common.type_aliases import GymEnv
+from lightning_baselines3.common.type_aliases import GymEnv, GymObs
 from lightning_baselines3.common.utils import set_random_seed
 from lightning_baselines3.common.vec_env import VecEnv
 from lightning_baselines3.common.vec_env import is_wrapped, wrap_env
@@ -47,7 +47,7 @@ class BaseModel(pl.LightningModule):
 
     :param env: The environment to learn from
         (if registered in Gym, can be str. Can be None for loading trained models)
-    :param eval_env: The environment to learn from
+    :param eval_env: The environment to evaluate on, must not be vectorised/parallelrised
         (if registered in Gym, can be str. Can be None for loading trained models)
     :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
     :param verbose: The verbosity level: 0 none, 1 training information, 2 debug
@@ -102,6 +102,13 @@ class BaseModel(pl.LightningModule):
             raise ValueError("generalized State-Dependent Exploration (gSDE) can only be used with continuous actions.")
 
         self.reset()
+
+
+    def predict(self, obs: GymObs) -> np.ndarray:
+        """
+        Override this function with the predict function of your own model
+        """
+        raise NotImplementedError
 
 
     def save_hyperparameters(self, frame=None, exclude=['env', 'eval_env']):
@@ -203,7 +210,7 @@ class BaseModel(pl.LightningModule):
         return episode_rewards, episode_lengths
 
 
-    def training_epoch_end(self, outputs):
+    def training_epoch_end(self, outputs) -> None:
         """
         Run the evaluation function at the end of the training epoch
         Override this if you also wish to do other things at the end of a training epoch

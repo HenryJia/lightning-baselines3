@@ -13,12 +13,15 @@ from torch import distributions
 import pytorch_lightning as pl
 
 from lightning_baselines3.on_policy_models import A2C
+from lightning_baselines3.common.sb2_compat.rmsprop_tf_like import RMSpropTFLike
 
 
 
 class DummyModel(A2C):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, optimizer=torch.optim.Adam, *args, **kwargs):
         super(DummyModel, self).__init__(*args, **kwargs)
+
+        self.optimizer = optimizer
 
         if isinstance(self.action_space, spaces.Discrete):
             self.p = nn.Parameter(torch.ones(1, self.action_space.n) * 0.5)
@@ -57,28 +60,25 @@ class DummyModel(A2C):
 
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = self.optimizer(self.parameters(), lr=1e-3)
         return optimizer
 
 
 
 @pytest.mark.parametrize("env_id", ["CartPole-v1", "MountainCar-v0", "MountainCarContinuous-v0"])
-def test_a2c_model(env_id):
+@pytest.mark.parametrize("optimizer", [torch.optim.Adam, RMSpropTFLike])
+def test_a2c_model(env_id, optimizer):
     """
     Check that environmnent integrated in Gym pass the test.
 
     :param env_id: (str)
     """
     model = DummyModel(
-        env_id,
+        optimizer=optimizer,
+        env=env_id,
         eval_env=env_id,
-        buffer_length=512,
-        num_rollouts=1,
-        batch_size=32,
-        epochs_per_rollout=10,
-        num_eval_episodes=10,
-        gamma=0.9,
-        gae_lambda=0.95,
+        num_rollouts=10,
+        num_eval_episodes=5,
         use_sde=False,
         sde_sample_freq=-1,
         seed=1234)

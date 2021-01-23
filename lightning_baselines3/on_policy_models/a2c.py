@@ -15,51 +15,34 @@ from lightning_baselines3.common.utils import explained_variance
 
 class A2C(OnPolicyModel):
     """
-    Proximal Policy Optimization algorithm (PPO) (clip version)
+    Advantage Actor Critic (A2C)
 
-    Paper: https://arxiv.org/abs/1707.06347
-    Code: This implementation borrows code from OpenAI Spinning Up (https://github.com/openai/spinningup/)
-    https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail and
-    and Stable Baselines (PPO2 from https://github.com/hill-a/stable-baselines)
+    Paper: https://arxiv.org/abs/1602.01783
+    Code: This implementation borrows code from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail and
+    and Stable Baselines 3 (https://github.com/DLR-RM/stable-baselines3)
 
-    Introduction to PPO: https://spinningup.openai.com/en/latest/algorithms/ppo.html
+    Introduction to A2C: https://hackernoon.com/intuitive-rl-intro-to-advantage-actor-critic-a2c-4ff545978752
 
-    :param env: The environment to learn from (if registered in Gym, can be str)
-    :param learning_rate: The learning rate, it can be a function
-        of the current progress remaining (from 1 to 0)
-    :param n_steps: The number of steps to run for each environment per update
-        (i.e. batch size is n_steps * n_env where n_env is number of environment copies running in parallel)
-    :param batch_size: Minibatch size
-    :param n_epochs: Number of epoch when optimizing the surrogate loss
-    :param gamma: Discount factor
-    :param gae_lambda: Factor for trade-off of bias vs variance for Generalized Advantage Estimator
-    :param clip_range: Clipping parameter, it can be a function of the current progress
-        remaining (from 1 to 0).
-    :param clip_range_vf: Clipping parameter for the value function,
-        it can be a function of the current progress remaining (from 1 to 0).
-        This is a parameter specific to the OpenAI implementation. If None is passed (default),
-        no clipping will be done on the value function.
-        IMPORTANT: this clipping depends on the reward scaling.
-    :param ent_coef: Entropy coefficient for the loss calculation
-    :param vf_coef: Value function coefficient for the loss calculation
-    :param max_grad_norm: The maximum value for the gradient clipping
-    :param use_sde: Whether to use generalized State Dependent Exploration (gSDE)
-        instead of action noise exploration (default: False)
-    :param sde_sample_freq: Sample a new noise matrix every n steps when using gSDE
+    :param env: (Gym environment or str) The environment to learn from (if registered in Gym, can be str)
+    :param eval_env: The environment to evaluate on, must not be vectorised/parallelrised
+        (if registered in Gym, can be str. Can be None for loading trained models)
+    :param buffer_length: (int) Length of the buffer and the number of steps to run for each environment per update
+    :param num_rollouts: Number of rollouts to do per PyTorch Lightning epoch. This does not affect any training dynamic,
+        just how often we evaluate the model since evaluation happens at the end of each Lightning epoch
+    :param batch_size: Minibatch size for each gradient update
+    :param epochs_per_rollout: Number of epochs to optimise the loss for
+    :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
+    :param gamma: (float) Discount factor
+    :param gae_lambda: (float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator.
+        Equivalent to classic advantage when set to 1.
+    :param value_coef: Value function coefficient for the loss calculation
+    :param entropy_coef: Entropy coefficient for the loss calculation
+    :param use_sde: (bool) Whether to use generalized State Dependent Exploration (gSDE)
+        instead of action noise exploration
+    :param sde_sample_freq: (int) Sample a new noise matrix every n steps when using gSDE
         Default: -1 (only sample at the beginning of the rollout)
-    :param target_kl: Limit the KL divergence between updates,
-        because the clipping is not enough to prevent large update
-        see issue #213 (cf https://github.com/hill-a/stable-baselines/issues/213)
-        By default, there is no limit on the kl div.
-    :param tensorboard_log: the log location for tensorboard (if None, no logging)
-    :param create_eval_env: Whether to create a second environment that will be
-        used for evaluating the agent periodically. (Only available when passing string for the environment)
-    :param policy_kwargs: additional arguments to be passed to the policy on creation
-    :param verbose: the verbosity level: 0 no output, 1 info, 2 debug
+    :param verbose: The verbosity level: 0 none, 1 training information, 2 debug
     :param seed: Seed for the pseudo random generators
-    :param device: Device (cpu, cuda, ...) on which the code should be run.
-        Setting it to auto, the code will be run on the GPU if possible.
-    :param _init_setup_model: Whether or not to build the network at the creation of the instance
     """
     def __init__(
         self,
@@ -100,6 +83,9 @@ class A2C(OnPolicyModel):
 
 
     def training_step(self, batch, batch_idx):
+        """
+        Specifies the update step for A2C. Override this if you wish to modify the A2C algorithm
+        """
         if self.use_sde:
             self.reset_noise(self.batch_size)
 

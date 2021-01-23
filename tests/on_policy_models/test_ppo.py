@@ -76,7 +76,7 @@ def test_ppo_model(env_id):
         num_rollouts=1,
         batch_size=32,
         epochs_per_rollout=10,
-        num_eval_episodes=10,
+        num_eval_episodes=5,
         gamma=0.9,
         gae_lambda=0.95,
         use_sde=False,

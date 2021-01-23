@@ -22,7 +22,7 @@ class OffPolicyModel(BaseModel):
 
     :param env: The environment to learn from
         (if registered in Gym, can be str. Can be None for loading trained models)
-    :param eval_env: The environment to learn from
+    :param eval_env: The environment to evaluate on, must not be vectorised/parallelrised
         (if registered in Gym, can be str. Can be None for loading trained models)
     :param batch_size: Minibatch size for each gradient update
     :param buffer_length: length of the replay buffer
