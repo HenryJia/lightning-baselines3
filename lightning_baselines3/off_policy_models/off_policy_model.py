@@ -20,26 +20,28 @@ class OffPolicyModel(BaseModel):
     """
     The base for On-Policy algorithms (ex: A2C/PPO).
 
-    :param env: (Gym environment or str) The environment to learn from (if registered in Gym, can be str)
-    :param buffer_length: (int) Length of the buffer and the number of steps to run for each environment per update
-    :param gamma: (float) Discount factor
-    :param gae_lambda: (float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator.
-        Equivalent to classic advantage when set to 1.
-    :param ent_coef: (float) Entropy coefficient for the loss calculation
-    :param vf_coef: (float) Value function coefficient for the loss calculation
-    :param max_grad_norm: (float) The maximum value for the gradient clipping
-    :param use_sde: (bool) Whether to use generalized State Dependent Exploration (gSDE)
-        instead of action noise exploration (default: False)
-    :param sde_sample_freq: (int) Sample a new noise matrix every n steps when using gSDE
+    :param env: The environment to learn from
+        (if registered in Gym, can be str. Can be None for loading trained models)
+    :param eval_env: The environment to learn from
+        (if registered in Gym, can be str. Can be None for loading trained models)
+    :param batch_size: Minibatch size for each gradient update
+    :param buffer_length: length of the replay buffer
+    :param warmup_length: how many steps of the model to collect transitions for before learning starts
+    :param train_freq: Update the model every ``train_freq`` steps. Set to `-1` to disable.
+    :param episodes_per_rollout: Update the model every ``episodes_per_rollout`` episodes.
+        Note that this cannot be used at the same time as ``train_freq``. Set to `-1` to disable.
+    :param num_rollouts: Number of rollouts to do per PyTorch Lightning epoch. This does not affect any training dynamic,
+        just how often we evaluate the model since evaluation happens at the end of each Lightning epoch
+    :param gradient_steps: How many gradient steps to do after each rollout
+    :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
+    :param gamma: the discount factor
+    :param use_sde: Whether to use generalized State Dependent Exploration (gSDE)
+    :param sde_sample_freq: Sample a new noise matrix every n steps when using gSDE
         Default: -1 (only sample at the beginning of the rollout)
-    :param sde_sample_freq: (bool) Whether to store gradients in the ReplayBuffer
-        Default: False
-    :param create_eval_env: (bool) Whether to create a second environment that will be
-        used for evaluating the agent periodically. (Only available when passing string for the environment)
-    :param monitor_wrapper: When creating an environment, whether to wrap it
-        or not in a Monitor wrapper.
-    :param policy_kwargs: (dict) additional arguments to be passed to the policy on creation
-    :param seed: (int) Seed for the pseudo random generators
+    :param use_sde_at_warmup: Whether to use gSDE instead of uniform sampling
+        during the warm up phase (before learning starts)
+    :param verbose: The verbosity level: 0 none, 1 training information, 2 debug (default: 0)
+    :param seed: Seed for the pseudo random generators
     """
 
     def __init__(

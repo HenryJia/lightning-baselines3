@@ -45,18 +45,16 @@ class BaseModel(pl.LightningModule):
     """
     The base of RL algorithms
 
-    :param env: (Union[GymEnv, str, None]) The environment to learn from
+    :param env: The environment to learn from
         (if registered in Gym, can be str. Can be None for loading trained models)
-    :param eval_env: (Union[GymEnv, str, None]) The environment to learn from
+    :param eval_env: The environment to learn from
         (if registered in Gym, can be str. Can be None for loading trained models)
-    :param num_eval_episodes: (int) The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
-        (default: 10)
-    :param verbose: (int) The verbosity level: 0 none, 1 training information, 2 debug
-    :param support_multi_env: (bool) Whether the algorithm supports training
-        with multiple environments in parallel (default: False)
-    :param seed: (Optional[int]) Seed for the pseudo random generators
-    :param use_sde: (bool) Whether to use generalized State Dependent Exploration (gSDE)
-        instead of action noise exploration (default: False)
+    :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
+    :param verbose: The verbosity level: 0 none, 1 training information, 2 debug
+    :param support_multi_env: Whether the algorithm supports training
+        with multiple environments in parallel
+    :param seed: Seed for the pseudo random generators
+    :param use_sde: Whether to use generalized State Dependent Exploration (gSDE)
     """
 
     def __init__(
