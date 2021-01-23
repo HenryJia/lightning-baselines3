@@ -1,8 +1,6 @@
 from collections import OrderedDict
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-import pytest
-
 import gym
 from gym import spaces
 
