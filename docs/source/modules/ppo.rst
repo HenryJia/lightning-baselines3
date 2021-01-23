@@ -113,7 +113,7 @@ Train a PPO agent on ``CartPole-v1`` using 4 environments.
         eval_env = gym.make('CartPole-v1')
         model = Model(env=env, eval_env=eval_env)
 
-        trainer = pl.Trainer(max_epochs=20, gradient_clip_val=0.5)
+        trainer = pl.Trainer(max_epochs=5, gradient_clip_val=0.5)
         trainer.fit(model)
 
         model.evaluate(num_eval_episodes=10, render=True)
