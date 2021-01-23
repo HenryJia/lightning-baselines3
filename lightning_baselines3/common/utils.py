@@ -60,11 +60,10 @@ def get_action_dim(action_space: spaces.Space) -> int:
         raise NotImplementedError()
 
 
-def set_random_seed(seed: int, using_cuda: bool = False) -> None:
+def set_random_seed(seed: int) -> None:
     """
     Seed the different random generators
     :param seed: (int)
-    :param using_cuda: (bool)
     """
     # Seed python RNG
     random.seed(seed)

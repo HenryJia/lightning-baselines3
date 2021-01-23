@@ -103,7 +103,11 @@ class BaseModel(pl.LightningModule):
 
         self.reset()
 
-
+    """
+    Utility function to save the hyperparameters of the model.
+    This function behaves identically to LightningModule.save_hyperparameters, but will by default exclude the Gym environments
+    See https://pytorch-lightning.readthedocs.io/en/latest/hyperparameters.html#lightningmodule-hyperparameters for more details
+    """
     def save_hyperparameters(self, frame=None, exclude=['env', 'eval_env']):
         if not frame:
             frame = inspect.currentframe().f_back
@@ -115,7 +119,16 @@ class BaseModel(pl.LightningModule):
         include = [k for k in init_args.keys() if k not in exclude]
         return super().save_hyperparameters(*include, frame=frame)
 
+    """
+    Evaluate the model with eval_env
 
+    :param num_eval_episodes: Number of episodes to evaluate for
+    :param deterministic: Whether to evaluate deterministically
+    :param render: Whether to render while evaluating
+    :param record: Whether to recod while evaluating
+    :param record_fn: File to record environment to if we are recording
+    :return: A list of total episode rewards and a list of episode lengths
+    """
     def evaluate(
         self,
         num_eval_episodes: int,
@@ -123,12 +136,7 @@ class BaseModel(pl.LightningModule):
         render: bool = False,
         record: bool = False,
         record_fn: Optional[str] = None) -> Tuple[List[float], List[int]]:
-        """
-        Evaluate the model with eval_env
 
-        :param deterministic: (bool) Whether to evaluate deterministically
-        :return: (torch.Tensor) The predicted action and state
-        """
         if isinstance(self.eval_env, VecEnv):
             assert self.eval_env.num_envs == 1, "Cannot run eval_env in parallel. eval_env.num_env must equal 1"
 
@@ -193,8 +201,11 @@ class BaseModel(pl.LightningModule):
         return episode_rewards, episode_lengths
 
 
+    """
+    Run the evaluation function at the end of the training epoch
+    Override this if you also wish to do other things at the end of a training epoch
+    """
     def training_epoch_end(self, outputs):
-        """" Run the evaluation function """
         self.eval()
         rewards, lengths = self.evaluate(self.num_eval_episodes)
         self.train()
@@ -206,18 +217,21 @@ class BaseModel(pl.LightningModule):
             prog_bar=True, logger=True)
 
 
-    def reset(self) -> None: # Reset the environment
+    """
+    Reset the enviornment
+    """
+    def reset(self) -> None:
         self._last_obs = self.env.reset()
-        self._last_dones = np.zeros((self.env.num_envs,), dtype=np.bool)  # type: Optional[np.ndarray]
+        self._last_dones = np.zeros((self.env.num_envs,), dtype=np.bool)
 
 
+    """
+    Set the seed of the pseudo-random generators
+    (python, numpy, pytorch, gym)
+
+    :param seed: The random seed to set
+    """
     def set_random_seed(self, seed: int) -> None:
-        """
-        Set the seed of the pseudo-random generators
-        (python, numpy, pytorch, gym, action_space)
-
-        :param seed: (int)
-        """
         set_random_seed(seed, using_cuda=self.device.type == torch.device("cuda").type)
         self.action_space.seed(seed)
         if self.env:
