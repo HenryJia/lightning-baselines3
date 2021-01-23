@@ -35,3 +35,5 @@ def test_base_model_checks():
 
     with pytest.raises(ValueError):
         model = BaseModel("CartPole-v1", "CartPole-v1", use_sde=True)
+
+    model = DummyModel("CartPole-v1", "CartPole-v1")

@@ -53,13 +53,13 @@ Train a A2C agent on ``CartPole-v1`` using 4 environments.
 
     import pytorch_lightning as pl
 
-    from lightning_baselines3.common.vec_env import make_vec_env, SubProcVecEnv
+    from lightning_baselines3.common.vec_env import make_vec_env, SubprocVecEnv
     from lightning_baselines3.on_policy_models import A2C
 
 
     class Model(A2C):
         def __init__(self, **kwargs):
-            # **kwargs will pass our arguments on to PPO
+            # **kwargs will pass our arguments on to A2C
             super(Model, self).__init__(**kwargs)
 
             self.actor = nn.Sequential(
@@ -80,14 +80,14 @@ Train a A2C agent on ``CartPole-v1`` using 4 environments.
             self.save_hyperparameters()
 
 
-        # This is for training the model, output the distribution and the corresponding value
+        # This is for training the model, returns the distribution and the corresponding value
         def forward(self, x):
             out = self.actor(x)
             dist = distributions.Categorical(probs=out)
             return dist, self.critic(x).flatten()
 
 
-        # This is for inference and evaluation of our model
+        # This is for inference and evaluation of our model, returns the action
         def predict(self, x, deterministic=True):
             out = self.actor(x)
             if deterministic:
@@ -104,7 +104,7 @@ Train a A2C agent on ``CartPole-v1`` using 4 environments.
 
 
     if __name__ == '__main__':
-        env = make_vec_env('CartPole-v1', n_envs=4, vec_env_cls=SubProcVecEnv)
+        env = make_vec_env('CartPole-v1', n_envs=4, vec_env_cls=SubprocVecEnv)
         eval_env = gym.make('CartPole-v1')
         model = Model(env=env, eval_env=eval_env)
 

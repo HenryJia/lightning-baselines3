@@ -7,12 +7,12 @@ from torch import nn
 import pytorch_lightning as pl
 
 from lightning_baselines3.common.vec_env import make_vec_env, SubprocVecEnv
-from lightning_baselines3.on_policy_models import A2C
+from lightning_baselines3.on_policy_models import PPO
 
 
-class Model(A2C):
+class Model(PPO):
     def __init__(self, **kwargs):
-        # **kwargs will pass our arguments on to A2C
+        # **kwargs will pass our arguments on to PPO
         super(Model, self).__init__(**kwargs)
 
         self.actor = nn.Sequential(
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     eval_env = gym.make('CartPole-v1')
     model = Model(env=env, eval_env=eval_env)
 
-    trainer = pl.Trainer(max_epochs=20, gradient_clip_val=0.5)
+    trainer = pl.Trainer(max_epochs=5, gradient_clip_val=0.5)
     trainer.fit(model)
 
     model.evaluate(num_eval_episodes=10, render=True)

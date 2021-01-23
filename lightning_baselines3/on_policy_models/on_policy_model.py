@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 
 from lightning_baselines3.common.base_model import BaseModel
 from lightning_baselines3.common.buffers import RolloutBuffer, RolloutBufferSamples
-from lightning_baselines3.common.type_aliases import GymEnv
+from lightning_baselines3.common.type_aliases import GymEnv, GymObs
 from lightning_baselines3.common.vec_env import VecEnv
 
 
@@ -80,6 +80,16 @@ class OnPolicyModel(BaseModel):
             gae_lambda=self.gae_lambda,
             n_envs=self.n_envs,
         )
+        self.save_hyperparameters()
+
+
+    def forward(self, obs: GymObs) -> Tuple[torch.distributions.Distribution, torch.Tensor]:
+        """
+        Override this function with the forward function of your model
+        :param obs: The input observations
+        :return: The chosen actions
+        """
+        raise NotImplementedError
 
 
     def train_dataloader(self):

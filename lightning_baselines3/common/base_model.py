@@ -102,12 +102,14 @@ class BaseModel(pl.LightningModule):
             raise ValueError("generalized State-Dependent Exploration (gSDE) can only be used with continuous actions.")
 
         self.reset()
+        self.save_hyperparameters()
 
 
-    def predict(self, obs: GymObs) -> np.ndarray:
+    def predict(self, obs: GymObs, deterministic: bool = False) -> np.ndarray:
         """
         Override this function with the predict function of your own model
         :param obs: The input observations
+        :param deterministic: Whether to predict deterministically
         :return: The chosen actions
         """
         raise NotImplementedError
@@ -127,7 +129,9 @@ class BaseModel(pl.LightningModule):
             exclude = (exclude, )
         init_args = pl.utilities.parsing.get_init_args(frame)
         include = [k for k in init_args.keys() if k not in exclude]
-        return super().save_hyperparameters(*include, frame=frame)
+
+        if len(include) > 0:
+            super().save_hyperparameters(*include, frame=frame)
 
 
     def evaluate(
