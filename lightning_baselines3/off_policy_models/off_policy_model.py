@@ -73,7 +73,7 @@ class OffPolicyModel(BaseModel):
             use_sde=use_sde,
         )
 
-        assert self.env.num_envs == 1, "OffPolicyAlgorithm only support single environment at this stage"
+        assert self.env.num_envs == 1, "OffPolicyModel only support single environment at this stage"
         assert train_freq > 0 or episodes_per_rollout > 0, "At least one of train_freq or episodes_per_rollout must be passed"
         if train_freq > 0 and episodes_per_rollout > 0:
             warnings.warn(
@@ -104,6 +104,9 @@ class OffPolicyModel(BaseModel):
 
 
     def reset(self):
+        """
+        Reset the environment and set the num_timesteps to 0
+        """
         super(OffPolicyModel, self).reset()
         self.num_timesteps = 0
 
@@ -116,10 +119,16 @@ class OffPolicyModel(BaseModel):
 
 
     def train_dataloader(self):
+        """
+        Create the dataloader for our OffPolicyModel
+        """
         return OffPolicyDataloader(self)
 
 
     def collect_rollouts(self):
+        """
+        Collect rollouts and put them into the ReplayBuffer
+        """
         assert self._last_obs is not None, "No previous observation was provided"
         # Sample new weights for the state dependent exploration
         if self.use_sde:

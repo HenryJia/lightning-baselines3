@@ -81,10 +81,16 @@ class OnPolicyModel(BaseModel):
 
 
     def train_dataloader(self):
+        """
+        Create the dataloader for our OffPolicyModel
+        """
         return OnPolicyDataloader(self)
 
 
     def collect_rollouts(self) -> RolloutBufferSamples:
+        """
+        Collect rollouts and put them into the RolloutBuffer
+        """
         assert self._last_obs is not None, "No previous observation was provided"
         with torch.no_grad():
             # Sample new weights for the state dependent exploration
