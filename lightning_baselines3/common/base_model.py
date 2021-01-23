@@ -103,12 +103,13 @@ class BaseModel(pl.LightningModule):
 
         self.reset()
 
-    """
-    Utility function to save the hyperparameters of the model.
-    This function behaves identically to LightningModule.save_hyperparameters, but will by default exclude the Gym environments
-    See https://pytorch-lightning.readthedocs.io/en/latest/hyperparameters.html#lightningmodule-hyperparameters for more details
-    """
+
     def save_hyperparameters(self, frame=None, exclude=['env', 'eval_env']):
+        """
+        Utility function to save the hyperparameters of the model.
+        This function behaves identically to LightningModule.save_hyperparameters, but will by default exclude the Gym environments
+        See https://pytorch-lightning.readthedocs.io/en/latest/hyperparameters.html#lightningmodule-hyperparameters for more details
+        """
         if not frame:
             frame = inspect.currentframe().f_back
         if not exclude:
