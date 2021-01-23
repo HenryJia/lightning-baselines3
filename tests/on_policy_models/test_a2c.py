@@ -18,7 +18,7 @@ from lightning_baselines3.common.sb2_compat.rmsprop_tf_like import RMSpropTFLike
 
 
 class DummyModel(A2C):
-    def __init__(self, optimizer=torch.optim.Adam, *args, **kwargs):
+    def __init__(self, optimizer, *args, **kwargs):
         super(DummyModel, self).__init__(*args, **kwargs)
 
         self.optimizer = optimizer
@@ -60,13 +60,17 @@ class DummyModel(A2C):
 
 
     def configure_optimizers(self):
-        optimizer = self.optimizer(self.parameters(), lr=1e-3)
-        return optimizer
+        if self.optimizer == 'adam':
+            return torch.optim.Adam(params=self.parameters(), lr=1e-3)
+        elif self.optimizer == 'RMSpropTFLike':
+            return RMSpropTFLike(params=self.parameters(), lr=1e-3, momentum=0.9, centered=True)
+        else:
+            raise
 
 
 
 @pytest.mark.parametrize("env_id", ["CartPole-v1", "MountainCar-v0", "MountainCarContinuous-v0"])
-@pytest.mark.parametrize("optimizer", [torch.optim.Adam, RMSpropTFLike])
+@pytest.mark.parametrize("optimizer", ['adam', 'RMSpropTFLike'])
 def test_a2c_model(env_id, optimizer):
     """
     Check that environmnent integrated in Gym pass the test.

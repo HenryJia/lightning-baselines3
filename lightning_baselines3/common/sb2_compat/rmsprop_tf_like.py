@@ -53,16 +53,11 @@ class RMSpropTFLike(Optimizer):
         momentum: float = 0,
         centered: bool = False,
     ):
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
-        if not 0.0 <= momentum:
-            raise ValueError("Invalid momentum value: {}".format(momentum))
-        if not 0.0 <= weight_decay:
-            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
-        if not 0.0 <= alpha:
-            raise ValueError("Invalid alpha value: {}".format(alpha))
+        assert 0.0 <= lr, ValueError("Invalid learning rate: {}".format(lr))
+        assert 0.0 <= eps, ValueError("Invalid epsilon value: {}".format(eps))
+        assert 0.0 <= momentum, ValueError("Invalid momentum value: {}".format(momentum))
+        assert 0.0 <= weight_decay, ValueError("Invalid weight_decay value: {}".format(weight_decay))
+        assert 0.0 <= alpha, ValueError("Invalid alpha value: {}".format(alpha))
 
         defaults = dict(lr=lr, momentum=momentum, alpha=alpha, eps=eps, centered=centered, weight_decay=weight_decay)
         super(RMSpropTFLike, self).__init__(params, defaults)
@@ -91,8 +86,7 @@ class RMSpropTFLike(Optimizer):
                 if p.grad is None:
                     continue
                 grad = p.grad
-                if grad.is_sparse:
-                    raise RuntimeError("RMSpropTF does not support sparse gradients")
+                assert not grad.is_sparse, RuntimeError("RMSpropTF does not support sparse gradients")
                 state = self.state[p]
 
                 # State initialization

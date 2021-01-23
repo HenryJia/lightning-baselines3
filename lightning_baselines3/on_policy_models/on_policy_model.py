@@ -86,6 +86,7 @@ class OnPolicyModel(BaseModel):
     def forward(self, obs: GymObs) -> Tuple[torch.distributions.Distribution, torch.Tensor]:
         """
         Override this function with the forward function of your model
+
         :param obs: The input observations
         :return: The chosen actions
         """

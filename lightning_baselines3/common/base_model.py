@@ -108,6 +108,7 @@ class BaseModel(pl.LightningModule):
     def predict(self, obs: GymObs, deterministic: bool = False) -> np.ndarray:
         """
         Override this function with the predict function of your own model
+
         :param obs: The input observations
         :param deterministic: Whether to predict deterministically
         :return: The chosen actions
