@@ -133,7 +133,7 @@ Coming soon
 Parameters
 ----------
 
-.. automodule:: lightning_baselines3.on_policy_models.A2C
+.. automodule:: lightning_baselines3.on_policy_models.a2c
 .. autoclass:: A2C
   :members:
   :inherited-members:

@@ -42,7 +42,7 @@ Coming Soon
   :caption: RL Algorithms
 
   modules/base
-  modules/A2C
+  modules/a2c
 
 Citing Stable Baselines3
 ------------------------
