@@ -33,7 +33,7 @@ class Model(A2C):
         self.save_hyperparameters()
 
     # This is for training the model
-    # returns the distribution and the corresponding value
+    # Returns the distribution and the corresponding value
     def forward(self, x):
         out = self.actor(x)
         dist = distributions.Categorical(probs=out)

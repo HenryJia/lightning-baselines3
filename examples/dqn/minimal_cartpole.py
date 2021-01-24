@@ -1,5 +1,4 @@
 import copy
-import gym
 
 import torch
 from torch import nn
@@ -32,27 +31,23 @@ class Model(DQN):
 
         self.save_hyperparameters()
 
-
     # This is for running the model, returns the Q values given our observation
     def forward(self, x):
         return self.qnet(x)
-
 
     # This is for running the target Q network
     def forward_target(self, x):
         return self.qnet_target(x)
 
-
     # This is for updating the target Q network
     def update_target(self):
         self.qnet_target.load_state_dict(self.qnet.state_dict())
 
-
-    # Use the environment step callback to linearly decay our epsilon per envrionment step for epsilon greedy
+    # Use the environment step callback to linearly decay our epsilon
+    # per envrionment step for epsilon greedy
     def on_step(self):
         k = max(self.eps_decay - self.num_timesteps, 0) / self.eps_decay
         self.eps = self.eps_final + k * (self.eps_init - self.eps_final)
-
 
     # This is for inference and evaluation of our model, returns the action
     def predict(self, x, deterministic=True):
@@ -62,14 +57,13 @@ class Model(DQN):
         else:
             eps = torch.rand_like(out[:, 0])
             eps = (eps < self.eps).float()
-            out = eps * torch.rand_like(out).max(dim=1)[1] + (1 - eps) * out.max(dim=1)[1]
+            out = eps * torch.rand_like(out).max(dim=1)[1] +\
+                (1 - eps) * out.max(dim=1)[1]
         return out.long().cpu().numpy()
-
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=3e-4)
         return optimizer
-
 
 
 if __name__ == '__main__':

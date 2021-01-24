@@ -1,26 +1,27 @@
-from collections import OrderedDict
 import argparse
 import copy
 
 import numpy as np
 import gym
-from gym import spaces
-import pybullet_envs
 
 import torch
-from  torch import distributions
 from torch import nn
-import torch.nn.functional as F
 
 import pytorch_lightning as pl
 
 from lightning_baselines3.off_policy_models import DQN
-from lightning_baselines3.common.vec_env import make_vec_env, SubprocVecEnv
-
 
 
 class Model(DQN):
-    def __init__(self, lr=3e-4, hidden_size=64, eps_init=1.0, eps_decay=10000, eps_final=0.05, **kwargs):
+    def __init__(
+        self,
+        lr=3e-4,
+        hidden_size=64,
+        eps_init=1.0,
+        eps_decay=10000,
+        eps_final=0.05,
+        **kwargs
+    ):
         super(Model, self).__init__(**kwargs)
         self.lr = lr
 
@@ -41,11 +42,11 @@ class Model(DQN):
 
         self.save_hyperparameters()
 
-
     @staticmethod
     def add_model_specific_args(parent_parser=None):
         if parent_parser:
-            parser = argparse.ArgumentParser(parents=[parent_parser], add_help=False)
+            parser = argparse.ArgumentParser(
+                parents=[parent_parser], add_help=False)
         else:
             parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument('--lr', type=float, default=3e-4)
@@ -67,23 +68,18 @@ class Model(DQN):
         parser.add_argument('--seed', type=int)
         return parser
 
-
     def forward(self, x):
         return self.qnet(x)
-
 
     def forward_target(self, x):
         return self.qnet_target(x)
 
-
     def update_target(self):
         self.qnet_target.load_state_dict(self.qnet.state_dict())
 
-
-    def on_step(self): # Linearly decay our epsilon for epsilon greedy
+    def on_step(self):  # Linearly decay our epsilon for epsilon greedy
         k = max(self.eps_decay - self.num_timesteps, 0) / self.eps_decay
         self.eps = self.eps_final + k * (self.eps_init - self.eps_final)
-
 
     def predict(self, x, deterministic=True):
         out = self.qnet(x)
@@ -92,22 +88,21 @@ class Model(DQN):
         else:
             eps = torch.rand_like(out[:, 0])
             eps = (eps < self.eps).float()
-            out = eps * torch.max(torch.rand_like(out), dim=1)[1] + (1 - eps) * torch.max(out, dim=1)[1]
+            out = eps * torch.max(torch.rand_like(out), dim=1)[1] +\
+                (1 - eps) * torch.max(out, dim=1)[1]
         return out.long().cpu().numpy()
-
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.qnet.parameters(), lr=self.lr)
         return optimizer
 
 
-
 if __name__ == '__main__':
-    # Parse env, model and trainer args separately so we don't have to abuse **kwargs
+    # Parse args separately so we don't have to abuse **kwargs
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--env', type=str)
-    parser.add_argument('--num_env', type=int, default=1)
-    parser.add_argument('--evaluate', action='store_true') # If set to true, load model from model_fn and don't train
+    # If set to true, load model from model_fn and don't train
+    parser.add_argument('--evaluate', action='store_true')
     parser.add_argument('--model_fn', type=str, default='ppo_mlp')
     parser.add_argument('--video_fn', type=str, default='ppo_mlp.mp4')
     args, ignored = parser.parse_known_args()
@@ -122,15 +117,14 @@ if __name__ == '__main__':
         trainer_args, ignored = trainer_parser.parse_known_args()
         trainer_args = vars(trainer_args)
 
-        env = make_vec_env(args.env, n_envs=args.num_env, vec_env_cls=SubprocVecEnv)
+        env = gym.make(args.env)
 
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor='val_reward_mean',
-        dirpath=args.env+'_dqn_mlp',
-        filename='mlp-{epoch:02d}-{val_reward_mean:.2f}.pl',
-        save_top_k=1,
-        mode='max',
-        )
+            monitor='val_reward_mean',
+            dirpath=args.env+'_dqn_mlp',
+            filename='mlp-{epoch:02d}-{val_reward_mean:.2f}.pl',
+            save_top_k=1,
+            mode='max')
 
         model = Model(
             env=env,
@@ -144,9 +138,15 @@ if __name__ == '__main__':
         if 'Bullet' in args.env:
             env.render(mode='human')
             env.reset()
-        model = Model.load_from_checkpoint(args.model_fn, env=env, eval_env=env)
+        model = Model.load_from_checkpoint(
+            args.model_fn, env=env, eval_env=env)
         model.eval()
 
-        # Warning: for some reason PyBullet environments are hardcoded to record at 320x240, and there's no easy way to deal with this
-        rewards, lengths = model.evaluate(num_eval_episodes=10, render=True, record=True, record_fn=args.video_fn)
+        # Warning: PyBullet environments are hardcoded to record at 320x240
+        # There seems to be no easy way to deal with this
+        rewards, lengths = model.evaluate(
+            num_eval_episodes=10,
+            render=True,
+            record=True,
+            record_fn=args.video_fn)
         print('Mean rewards and length:', np.mean(rewards), np.mean(lengths))
