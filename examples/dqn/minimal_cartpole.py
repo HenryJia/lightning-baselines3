@@ -25,7 +25,7 @@ class Model(DQN):
 
         self.eps = 1.0
         self.eps_init = 1.0
-        self.eps_decay = 1000
+        self.eps_decay = 5000
         self.eps_final = 0.05
 
         self.qnet_target = copy.deepcopy(self.qnet)
@@ -62,7 +62,7 @@ class Model(DQN):
         else:
             eps = torch.rand_like(out[:, 0])
             eps = (eps < self.eps).float()
-            out = eps * torch.max(torch.rand_like(out), dim=1)[1] + (1 - eps) * torch.max(out, dim=1)[1]
+            out = eps * torch.rand_like(out).max(dim=1)[1] + (1 - eps) * out.max(dim=1)[1]
         return out.long().cpu().numpy()
 
 

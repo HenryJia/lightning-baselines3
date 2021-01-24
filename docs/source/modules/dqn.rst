@@ -77,7 +77,7 @@ Example
 
             self.eps = 1.0
             self.eps_init = 1.0
-            self.eps_decay = 1000
+            self.eps_decay = 5000
             self.eps_final = 0.05
 
             self.qnet_target = copy.deepcopy(self.qnet)
@@ -100,7 +100,8 @@ Example
             self.qnet_target.load_state_dict(self.qnet.state_dict())
 
 
-        # Use the environment step callback to linearly decay our epsilon per envrionment step for epsilon greedy
+        # Use the environment step callback to linearly decay our
+        # epsilon per envrionment step for epsilon greedy
         def on_step(self):
             k = max(self.eps_decay - self.num_timesteps, 0) / self.eps_decay
             self.eps = self.eps_final + k * (self.eps_init - self.eps_final)
@@ -114,7 +115,7 @@ Example
             else:
                 eps = torch.rand_like(out[:, 0])
                 eps = (eps < self.eps).float()
-                out = eps * torch.max(torch.rand_like(out), dim=1)[1] + (1 - eps) * torch.max(out, dim=1)[1]
+                out = eps*torch.rand_like(out).max(dim=1)[1] + (1-eps)*out.max(dim=1)[1]
             return out.long().cpu().numpy()
 
 
@@ -123,14 +124,13 @@ Example
             return optimizer
 
 
+    if __name__ == '__main__':
+        model = Model(env='CartPole-v1', eval_env='CartPole-v1')
 
-if __name__ == '__main__':
-    model = Model(env='CartPole-v1', eval_env='CartPole-v1')
+        trainer = pl.Trainer(max_epochs=10, gradient_clip_val=0.5)
+        trainer.fit(model)
 
-    trainer = pl.Trainer(max_epochs=10, gradient_clip_val=0.5)
-    trainer.fit(model)
-
-    model.evaluate(num_eval_episodes=10, render=True)
+        model.evaluate(num_eval_episodes=10, render=True)
 
 Results
 -------
