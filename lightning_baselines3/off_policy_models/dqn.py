@@ -49,7 +49,7 @@ class DQN(OffPolicyModel):
         warmup_length: int = 100,
         train_freq: int = 4,
         episodes_per_rollout: int = -1,
-        num_rollouts: int = 1,
+        num_rollouts: int = 1000,
         gradient_steps: int = 1,
         target_update_interval: int = 10000,
         num_eval_episodes: int = 100,
