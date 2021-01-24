@@ -3,6 +3,7 @@ import copy
 
 import numpy as np
 import gym
+import pybullet_envs
 
 import torch
 from torch import nn
@@ -10,6 +11,7 @@ from torch import nn
 import pytorch_lightning as pl
 
 from lightning_baselines3.off_policy_models import DQN
+pybullet_envs.getList()
 
 
 class Model(DQN):

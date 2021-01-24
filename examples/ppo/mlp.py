@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import argparse
 
 import numpy as np
@@ -7,15 +6,14 @@ from gym import spaces
 import pybullet_envs
 
 import torch
-from  torch import distributions
+from torch import distributions
 from torch import nn
-import torch.nn.functional as F
 
 import pytorch_lightning as pl
 
 from lightning_baselines3.on_policy_models import PPO
 from lightning_baselines3.common.vec_env import make_vec_env, SubprocVecEnv
-
+pybullet_envs.getList()
 
 
 class Model(PPO):
@@ -35,7 +33,7 @@ class Model(PPO):
         elif isinstance(self.action_space, spaces.Box):
             actor += [nn.Linear(hidden_size, self.action_space.shape[0] * 2)]
         else:
-            raise Exception("This example only supports environments with Discrete and Box action spaces")
+            raise Exception("This example only supports Discrete and Box")
 
         self.actor = nn.Sequential(*actor)
         self.critic = nn.Sequential(
@@ -50,7 +48,8 @@ class Model(PPO):
     @staticmethod
     def add_model_specific_args(parent_parser=None):
         if parent_parser:
-            parser = argparse.ArgumentParser(parents=[parent_parser], add_help=False)
+            parser = argparse.ArgumentParser(
+                parents=[parent_parser], add_help=False)
         else:
             parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument('--lr', type=float, default=3e-4)
@@ -73,17 +72,17 @@ class Model(PPO):
         parser.add_argument('--seed', type=int)
         return parser
 
-
     def forward(self, x):
         out = self.actor(x)
         if isinstance(self.action_space, spaces.Discrete):
             dist = distributions.Categorical(probs=out)
         elif isinstance(self.action_space, spaces.Box):
             out = list(torch.chunk(out, 2, dim=1))
-            out[1] = torch.diag_embed(torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
-            dist = distributions.MultivariateNormal(loc=out[0], scale_tril=out[1])
+            out[1] = torch.diag_embed(
+                torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
+            dist = distributions.MultivariateNormal(
+                loc=out[0], scale_tril=out[1])
         return dist, self.critic(x).flatten()
-
 
     def predict(self, x, deterministic=True):
         out = self.actor(x)
@@ -97,23 +96,24 @@ class Model(PPO):
                 out = distributions.Categorical(probs=out).sample()
             elif isinstance(self.action_space, spaces.Box):
                 out = list(torch.chunk(out, 2, dim=1))
-                out[1] = torch.diag_embed(torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
-                out = distributions.MultivariateNormal(loc=out[0], scale_tril=out[1]).sample()
+                out[1] = torch.diag_embed(
+                    torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
+                out = distributions.MultivariateNormal(
+                    loc=out[0], scale_tril=out[1]).sample()
         return out.cpu().numpy()
-
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
 
-
 if __name__ == '__main__':
-    # Parse env, model and trainer args separately so we don't have to abuse **kwargs
+    # Parse args separately so we don't have to abuse **kwargs
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--env', type=str)
     parser.add_argument('--num_env', type=int, default=4)
-    parser.add_argument('--evaluate', action='store_true') # If set to true, load model from model_fn and don't train
+    # If set to true, load model from model_fn and don't train
+    parser.add_argument('--evaluate', action='store_true')
     parser.add_argument('--model_fn', type=str, default='ppo_mlp')
     parser.add_argument('--video_fn', type=str, default='ppo_mlp.mp4')
     args, ignored = parser.parse_known_args()
@@ -128,15 +128,15 @@ if __name__ == '__main__':
         trainer_args, ignored = trainer_parser.parse_known_args()
         trainer_args = vars(trainer_args)
 
-        env = make_vec_env(args.env, n_envs=args.num_env, vec_env_cls=SubprocVecEnv)
+        env = make_vec_env(
+            args.env, n_envs=args.num_env, vec_env_cls=SubprocVecEnv)
 
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor='val_reward_mean',
-        dirpath=args.env+'_ppo_mlp',
-        filename='mlp-{epoch:02d}-{val_reward_mean:.2f}.pl',
-        save_top_k=1,
-        mode='max',
-        )
+            monitor='val_reward_mean',
+            dirpath=args.env+'_ppo_mlp',
+            filename='mlp-{epoch:02d}-{val_reward_mean:.2f}.pl',
+            save_top_k=1,
+            mode='max')
 
         model = Model(
             env=env,
@@ -150,8 +150,14 @@ if __name__ == '__main__':
         if 'Bullet' in args.env:
             env.render(mode='human')
             env.reset()
-        model = Model.load_from_checkpoint(args.model_fn, env=env, eval_env=env)
+        model = Model.load_from_checkpoint(
+            args.model_fn, env=env, eval_env=env)
 
-        # Warning: for some reason PyBullet environments are hardcoded to record at 320x240, and there's no easy way to deal with this
-        rewards, lengths = model.evaluate(num_eval_episodes=10, render=True, record=True, record_fn=args.video_fn)
+        # Warning: PyBullet environments are hardcoded to record at 320x240
+        # There seems to be no easy way to deal with this
+        rewards, lengths = model.evaluate(
+            num_eval_episodes=10,
+            render=True,
+            record=True,
+            record_fn=args.video_fn)
         print('Mean rewards and length:', np.mean(rewards), np.mean(lengths))

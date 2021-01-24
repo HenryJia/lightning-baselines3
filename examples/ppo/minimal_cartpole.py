@@ -1,7 +1,7 @@
 import gym
 
 import torch
-from  torch import distributions
+from torch import distributions
 from torch import nn
 
 import pytorch_lightning as pl
@@ -32,13 +32,12 @@ class Model(PPO):
 
         self.save_hyperparameters()
 
-
-    # This is for training the model, returns the distribution and the corresponding value
+    # This is for training the model
+    # Returns the distribution and the corresponding value
     def forward(self, x):
         out = self.actor(x)
         dist = distributions.Categorical(probs=out)
         return dist, self.critic(x).flatten()
-
 
     # This is for inference and evaluation of our model, returns the action
     def predict(self, x, deterministic=True):
@@ -49,11 +48,9 @@ class Model(PPO):
             out = distributions.Categorical(probs=out).sample()
         return out.cpu().numpy()
 
-
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=3e-4)
         return optimizer
-
 
 
 if __name__ == '__main__':
