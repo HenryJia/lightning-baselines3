@@ -123,6 +123,9 @@ class DQN(OffPolicyModel):
         """
         Specifies the update step for DQN. Override this if you wish to modify the A2C algorithm
         """
+        if self.num_timesteps < self.warmup_length:
+            return
+
         if float(self.num_timesteps - self.update_timestep) / self.target_update_interval > 1:
             self.update_target()
             self.update_timestep = self.num_timesteps
@@ -136,6 +139,4 @@ class DQN(OffPolicyModel):
         current_q = torch.gather(current_q, dim=1, index=batch.actions.long())
 
         loss = F.smooth_l1_loss(current_q, target_q)
-        if self.num_timesteps < self.warmup_length:
-            loss = loss * 0
         return loss
