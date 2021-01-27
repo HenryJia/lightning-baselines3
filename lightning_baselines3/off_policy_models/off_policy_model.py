@@ -177,6 +177,11 @@ class OffPolicyModel(BaseModel):
             self.on_step()
         self.train()
 
+        if self.gradient_steps < 1:
+            return i
+        else:
+            return self.gradient_steps
+
 
 class OffPolicyDataloader:
     def __init__(self, model: OffPolicyModel):
@@ -185,6 +190,6 @@ class OffPolicyDataloader:
 
     def __iter__(self):
         for i in range(self.model.num_rollouts):
-            self.model.collect_rollouts()
-            for j in range(self.model.gradient_steps):
+            gradient_steps = self.model.collect_rollouts()
+            for j in range(gradient_steps):
                 yield self.model.replay_buffer.sample()

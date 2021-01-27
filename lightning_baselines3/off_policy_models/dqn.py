@@ -76,7 +76,7 @@ class DQN(OffPolicyModel):
             sde_sample_freq=-1
         )
 
-        assert isinstance(self.action_space, spaces.Discrete), "DQN only supports environments with Discrete and Box action spaces"
+        assert isinstance(self.action_space, spaces.Discrete), "DQN only supports environments with Discrete action spaces"
 
         self.target_update_interval = target_update_interval
 
