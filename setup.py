@@ -23,6 +23,7 @@ setup(
     extras_require={
         "tests": [
             # Run tests and coverage
+            "box2d",
             "pytest",
             "pytest-cov",
             "pytest-env",
