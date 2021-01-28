@@ -5,29 +5,37 @@ from gym import spaces
 import torch
 import torch.nn.functional as F
 
-from lightning_baselines3.off_policy_models.off_policy_model import OffPolicyModel
+from lightning_baselines3.off_policy_models import OffPolicyModel
 from lightning_baselines3.common.type_aliases import GymEnv
-
 
 
 class TD3(OffPolicyModel):
     """
     The base for On-Policy algorithms (ex: A2C/PPO).
 
-    :param env: The environment to learn from
-        (if registered in Gym, can be str. Can be None for loading trained models)
-    :param eval_env: The environment to evaluate on, must not be vectorised/parallelrised
-        (if registered in Gym, can be str. Can be None for loading trained models)
+    :param env: The environment to learn from. If registered in Gym,
+        can be str. Can be None for loading trained models
+    :param eval_env: The environment to evaluate on, must not be parallelrised.
+        If registered in Gym, can be str.
+        Can be None for loading trained models
     :param batch_size: Minibatch size for each gradient update
     :param buffer_length: length of the replay buffer
-    :param warmup_length: how many steps of the model to collect transitions for before learning starts
-    :param train_freq: Update the model every ``train_freq`` steps. Set to `-1` to disable.
+    :param warmup_length: how many steps of the model to collect transitions
+        for before learning starts
+    :param train_freq: Update the model every ``train_freq`` steps.
+        Set to `-1` to disable.
     :param episodes_per_rollout: Update the model every ``episodes_per_rollout`` episodes.
-        Note that this cannot be used at the same time as ``train_freq``. Set to `-1` to disable.
-    :param num_rollouts: Number of rollouts to do per PyTorch Lightning epoch. This does not affect any training dynamic,
-        just how often we evaluate the model since evaluation happens at the end of each Lightning epoch
+        Note that this cannot be used at the same time as ``train_freq``.
+        Set to `-1` to disable.
+    :param num_rollouts: Number of rollouts to do per PyTorch Lightning epoch.
+        This does not affect any training dynamic, just how often we evaluate the model since
+        evaluation happens at the end of each Lightning epoch
     :param gradient_steps: How many gradient steps to do after each rollout
-    :param target_update_interval: How many environment steps to wait between updating the target Q network
+    :param policy_delay: Policy and target networks will only be updated once every policy_delay steps
+        per training steps. The Q values will be updated policy_delay more often (update every training step).
+    :param target_policy_noise: Standard deviation of Gaussian noise added to target policy
+        (smoothing noise)
+    :param target_noise_clip: Limit for absolute value of target policy smoothing noise.
     :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
     :param gamma: the discount factor
     :param verbose: The verbosity level: 0 none, 1 training information, 2 debug (default: 0)
@@ -43,12 +51,12 @@ class TD3(OffPolicyModel):
         warmup_length: int = 100,
         train_freq: int = -1,
         episodes_per_rollout: int = 1,
-        num_rollouts: int = 1000,
+        num_rollouts: int = 10,
         gradient_steps: int = -1,
         policy_delay: int = 2,
         target_policy_noise: float = 0.2,
         target_noise_clip: float = 0.5,
-        num_eval_episodes: int = 100,
+        num_eval_episodes: int = 10,
         gamma: float = 0.99,
         verbose: int = 0,
         seed: Optional[int] = None,
@@ -67,7 +75,8 @@ class TD3(OffPolicyModel):
             gamma=gamma,
             verbose=verbose,
             seed=seed,
-            use_sde=False, # TD3 Does not support SDE since DQN only supports Discrete actions spaces
+            squashed_actions=True,
+            use_sde=False,  # TD3 Does not support SDE since DQN only supports Discrete actions spaces
             use_sde_at_warmup=False,
             sde_sample_freq=-1)
 
@@ -80,8 +89,7 @@ class TD3(OffPolicyModel):
         self.target_noise_clip = target_noise_clip
         self.target_policy_noise = target_policy_noise
 
-        self.n_critics = 2 # Set this to 1 for DDPG
-
+        self.n_critics = 2  # Set this to 1 for DDPG
 
     def forward_actor(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -93,7 +101,6 @@ class TD3(OffPolicyModel):
         """
         raise NotImplementedError
 
-
     def forward_critic1(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
         Runs the Q network.
@@ -103,7 +110,6 @@ class TD3(OffPolicyModel):
         :return: The output Q values of the Q network
         """
         raise NotImplementedError
-
 
     def forward_critic2(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
@@ -115,7 +121,6 @@ class TD3(OffPolicyModel):
         """
         raise NotImplementedError
 
-
     def forward_actor_target(self, x: torch.Tensor) -> torch.Tensor:
         """
         Runs the Q network.
@@ -125,7 +130,6 @@ class TD3(OffPolicyModel):
         :return: The output Q values of the Q network
         """
         raise NotImplementedError
-
 
     def forward_critic_target1(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
@@ -137,7 +141,6 @@ class TD3(OffPolicyModel):
         """
         raise NotImplementedError
 
-
     def forward_critic_target2(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
         Runs the target critic network.
@@ -148,14 +151,12 @@ class TD3(OffPolicyModel):
         """
         raise NotImplementedError
 
-
     def update_targets(self):
         """
         Function to update the target Q network periodically.
         Override this function with your own.
         """
         raise NotImplementedError
-
 
     def configure_optimizer(self) -> Tuple[torch.optim.Optimizer, torch.optim.Optimizer]:
         """
@@ -166,7 +167,6 @@ class TD3(OffPolicyModel):
         :return: The critic optimiser, followed by the actor optimiser
         """
         raise NotImplementedError
-
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         """
@@ -198,6 +198,7 @@ class TD3(OffPolicyModel):
 
         # Compute critic loss
         critic_loss = F.mse_loss(current_q1, target_q)
+        self.log('critic_loss', critic_loss, on_step=True, prog_bar=True, logger=True)
 
         # Repeat for the other critic if we have 2
         if self.n_critics == 2:
@@ -216,5 +217,7 @@ class TD3(OffPolicyModel):
             self.manual_backward(actor_loss, opt_actor)
             opt_actor.step()
             opt_actor.zero_grad()
+
+            self.log('actor_loss', actor_loss, on_step=True, prog_bar=True, logger=True)
 
             self.update_targets()

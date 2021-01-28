@@ -35,6 +35,7 @@ class OffPolicyModel(BaseModel):
     :param gradient_steps: How many gradient steps to do after each rollout
     :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
     :param gamma: the discount factor
+    :param squashed_actions: whether the actions are squashed between [-1, 1] and need to be unsquashed
     :param use_sde: Whether to use generalized State Dependent Exploration (gSDE)
     :param sde_sample_freq: Sample a new noise matrix every n steps when using gSDE
         Default: -1 (only sample at the beginning of the rollout)
@@ -55,8 +56,9 @@ class OffPolicyModel(BaseModel):
         episodes_per_rollout: int = -1,
         num_rollouts: int = 1,
         gradient_steps: int = 1,
-        num_eval_episodes: int = 100,
+        num_eval_episodes: int = 10,
         gamma: float = 0.99,
+        squashed_actions: bool = False,
         use_sde: bool = False,
         sde_sample_freq: int = -1,
         use_sde_at_warmup: bool = False,
@@ -93,6 +95,7 @@ class OffPolicyModel(BaseModel):
         self.gradient_steps = gradient_steps
         self.num_rollouts = num_rollouts
         self.gamma = gamma
+        self.squashed_actions = squashed_actions
 
         self.replay_buffer = ReplayBuffer(
             buffer_length,
@@ -125,6 +128,31 @@ class OffPolicyModel(BaseModel):
         return OffPolicyDataloader(self)
 
 
+    def scale_actions(
+        self, actions: np.ndarray, squashed=False
+        ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Scale the action appropriately for spaces.Box based on whether they
+        are squashed between [-1, 1]
+
+        :param action: The input action
+        :return: The action to step the environment with and the action to buffer with
+        """
+
+        high, low = self.action_space.high, self.action_space.low
+        center = (high + low) / 2.0
+        if squashed:
+            buffer_actions = actions
+            actions = center + actions * (high - low) / 2.0
+        else:
+            actions = np.clip(
+                actions,
+                self.action_space.low,
+                self.action_space.high)
+            buffer_actions = (actions - center) / (high - low) * 2.0
+        return actions, buffer_actions
+
+
     def collect_rollouts(self):
         """
         Collect rollouts and put them into the ReplayBuffer
@@ -145,27 +173,33 @@ class OffPolicyModel(BaseModel):
 
             if self.num_timesteps < self.warmup_length:
                 actions = np.array([self.action_space.sample()])
+                if isinstance(self.action_space, gym.spaces.Box):
+                    actions, buffer_actions = self.scale_actions(actions, False)
+                else:
+                    buffer_actions = actions
             else:
                 with torch.no_grad():
-                    # Convert to pytorch tensor, let Lightning take care of any GPU transfer
+                    # Convert to pytorch tensor
                     obs_tensor = torch.as_tensor(self._last_obs).to(device=self.device, dtype=torch.float32)
                     actions = self.predict(obs_tensor, deterministic=False)
 
-            # Rescale and perform action
-            clipped_actions = actions
-            # Clip the actions to avoid out of bound error
-            if isinstance(self.action_space, gym.spaces.Box):
-                clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
-            elif isinstance(self.action_space, gym.spaces.Discrete):
-                clipped_actions = actions.astype(np.int32)
+                # Clip and scale actions appropriately
+                if isinstance(self.action_space, gym.spaces.Box):
+                    actions, buffer_actions = self.scale_actions(actions, self.squashed_actions)
+                elif isinstance(self.action_space, (gym.spaces.Discrete,
+                                                    gym.spaces.MultiDiscrete,
+                                                    gym.spaces.MultiBinary)):
+                    actions = actions.astype(np.int32)
+                    if isinstance(self.action_space, gym.spaces.Discrete):
+                        # Reshape in case of discrete action
+                        buffer_actions = actions.reshape(-1, 1)
+                else:
+                    buffer_actions, = actions
 
-            new_obs, rewards, dones, infos = self.env.step(clipped_actions)
+            new_obs, rewards, dones, infos = self.env.step(actions)
 
-            if isinstance(self.action_space, gym.spaces.Discrete):
-                # Reshape in case of discrete action
-                actions = actions.reshape(-1, 1)
-
-            self.replay_buffer.add(self._last_obs, new_obs, actions, rewards, dones)
+            # The actions we buffer are always scaled between [-1, 1] if we're working with box
+            self.replay_buffer.add(self._last_obs, new_obs, buffer_actions, rewards, dones)
 
             self._last_obs = new_obs
             i += 1
@@ -177,10 +211,28 @@ class OffPolicyModel(BaseModel):
             self.on_step()
         self.train()
 
+        self.log('num_timesteps', self.num_timesteps, on_step=True, prog_bar=True, logger=True)
+
         if self.gradient_steps < 1:
             return i
         else:
             return self.gradient_steps
+
+    def training_epoch_end(self, outputs) -> None:
+        """
+        Run the evaluation function at the end of the training epoch
+        Override this if you also wish to do other things at the end of a training epoch
+        """
+        if self.num_timesteps >= self.warmup_length:
+            self.eval()
+            rewards, lengths = self.evaluate(self.num_eval_episodes)
+            self.train()
+            self.log_dict({
+                'val_reward_mean': np.mean(rewards),
+                'val_reward_std': np.std(rewards),
+                'val_lengths_mean': np.mean(lengths),
+                'val_lengths_std': np.std(lengths)},
+                prog_bar=True, logger=True)
 
 
 class OffPolicyDataloader:

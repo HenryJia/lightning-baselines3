@@ -47,7 +47,7 @@ class OnPolicyModel(BaseModel):
         num_rollouts: int,
         batch_size: int,
         epochs_per_rollout: int,
-        num_eval_episodes: int = 100,
+        num_eval_episodes: int = 10,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
         use_sde: bool = False,

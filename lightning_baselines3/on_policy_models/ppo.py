@@ -64,7 +64,7 @@ class PPO(OnPolicyModel):
         num_rollouts: int = 1,
         batch_size: int = 64,
         epochs_per_rollout: int = 10,
-        num_eval_episodes: int = 100,
+        num_eval_episodes: int = 10,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
         clip_range: float = 0.2,

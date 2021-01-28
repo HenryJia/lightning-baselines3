@@ -52,7 +52,7 @@ class A2C(OnPolicyModel):
         num_rollouts: int = 100,
         batch_size: int = 128,
         epochs_per_rollout: int = 1,
-        num_eval_episodes: int = 100,
+        num_eval_episodes: int = 10,
         gamma: float = 0.99,
         gae_lambda: float = 1.0,
         value_coef: float = 0.5,

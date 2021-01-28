@@ -1,3 +1,4 @@
+import copy
 from collections import OrderedDict
 
 import pytest
@@ -20,16 +21,16 @@ from lightning_baselines3.common.utils import polyak_update
 class DummyModel(TD3):
     def __init__(self, *args, **kwargs):
         super(DummyModel, self).__init__(*args, **kwargs)
-        self.actor = nn.Linear(self.observation_space.shape[0], self.action_space.shape[0])
+        self.actor = nn.Sequential(
+            nn.Linear(self.observation_space.shape[0], self.action_space.shape[0]),
+            nn.Tanh())
         self.actor_target = nn.Linear(self.observation_space.shape[0], self.action_space.shape[0])
         self.critic1 = nn.Linear(self.observation_space.shape[0] + self.action_space.shape[0], 1)
         self.critic2 = nn.Linear(self.observation_space.shape[0] + self.action_space.shape[0], 1)
-        self.critic_target1 = nn.Linear(self.observation_space.shape[0] + self.action_space.shape[0], 1)
-        self.critic_target2 = nn.Linear(self.observation_space.shape[0] + self.action_space.shape[0], 1)
 
-        self.actor_target.load_state_dict(self.actor.state_dict())
-        self.critic_target1.load_state_dict(self.critic1.state_dict())
-        self.critic_target2.load_state_dict(self.critic2.state_dict())
+        self.actor_target = copy.deepcopy(self.actor)
+        self.critic_target1 = copy.deepcopy(self.critic1)
+        self.critic_target2 = copy.deepcopy(self.critic2)
 
         self.save_hyperparameters()
 
@@ -66,7 +67,7 @@ class DummyModel(TD3):
         opt_actor = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
         opt_critic = torch.optim.Adam(
             list(self.critic1.parameters()) + list(self.critic2.parameters()), lr=1e-3)
-        return opt_actor, opt_critic
+        return opt_critic, opt_actor
 
 
 @pytest.mark.parametrize("env_id", ["MountainCarContinuous-v0", "LunarLanderContinuous-v2"])

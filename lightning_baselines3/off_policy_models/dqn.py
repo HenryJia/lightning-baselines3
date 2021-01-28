@@ -52,7 +52,7 @@ class DQN(OffPolicyModel):
         num_rollouts: int = 1000,
         gradient_steps: int = 1,
         target_update_interval: int = 10000,
-        num_eval_episodes: int = 100,
+        num_eval_episodes: int = 10,
         gamma: float = 0.99,
         verbose: int = 0,
         seed: Optional[int] = None,
