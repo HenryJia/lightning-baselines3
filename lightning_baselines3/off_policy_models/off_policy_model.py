@@ -194,7 +194,7 @@ class OffPolicyModel(BaseModel):
                         # Reshape in case of discrete action
                         buffer_actions = actions.reshape(-1, 1)
                 else:
-                    buffer_actions, = actions
+                    buffer_actions = actions
 
             new_obs, rewards, dones, infos = self.env.step(actions)
 

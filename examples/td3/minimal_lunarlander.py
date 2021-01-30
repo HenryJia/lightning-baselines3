@@ -8,19 +8,19 @@ import pytorch_lightning as pl
 from lightning_baselines3.off_policy_models import TD3
 from lightning_baselines3.common.utils import polyak_update
 
+
 class Model(TD3):
     def __init__(self, *args, **kwargs):
         super(Model, self).__init__(*args, **kwargs)
 
         # Note: The output layer of the actor must be Tanh activated
-        # 
         self.actor = nn.Sequential(
             nn.Linear(self.observation_space.shape[0], 256),
             nn.Tanh(),
             nn.Linear(256, 256),
             nn.Tanh(),
             nn.Linear(256, self.action_space.shape[0]),
-            nn.Tanh()) 
+            nn.Tanh())
 
         in_dim = self.observation_space.shape[0] + self.action_space.shape[0]
         self.critic1 = nn.Sequential(
@@ -88,6 +88,7 @@ class Model(TD3):
             list(self.critic1.parameters()) + list(self.critic2.parameters()),
             lr=1e-3)
         return opt_critic, opt_actor
+
 
 if __name__ == '__main__':
     model = Model(
