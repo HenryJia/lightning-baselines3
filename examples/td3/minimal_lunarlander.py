@@ -94,8 +94,7 @@ if __name__ == '__main__':
     model = Model(
         env='LunarLanderContinuous-v2',
         eval_env='LunarLanderContinuous-v2',
-        warmup_length=10000,
-        )
+        warmup_length=10000)
 
     trainer = pl.Trainer(max_epochs=30, gradient_clip_val=0.5)
     trainer.fit(model)

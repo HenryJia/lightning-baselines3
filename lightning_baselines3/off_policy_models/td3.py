@@ -37,6 +37,7 @@ class TD3(OffPolicyModel):
         (smoothing noise)
     :param target_noise_clip: Limit for absolute value of target policy smoothing noise.
     :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
+    :param squashed_actions: whether the actions are squashed between [-1, 1] and need to be unsquashed
     :param gamma: the discount factor
     :param verbose: The verbosity level: 0 none, 1 training information, 2 debug (default: 0)
     :param seed: Seed for the pseudo random generators
@@ -58,6 +59,7 @@ class TD3(OffPolicyModel):
         target_noise_clip: float = 0.5,
         num_eval_episodes: int = 10,
         gamma: float = 0.99,
+        squashed_actions: bool = True,
         verbose: int = 0,
         seed: Optional[int] = None,
     ):
@@ -75,7 +77,7 @@ class TD3(OffPolicyModel):
             gamma=gamma,
             verbose=verbose,
             seed=seed,
-            squashed_actions=True,
+            squashed_actions=squashed_actions,
             use_sde=False,  # TD3 Does not support SDE since DQN only supports Discrete actions spaces
             use_sde_at_warmup=False,
             sde_sample_freq=-1)
@@ -91,69 +93,73 @@ class TD3(OffPolicyModel):
 
         self.n_critics = 2  # Set this to 1 for DDPG
 
-    def forward_actor(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_actor(self, obs: torch.Tensor) -> torch.Tensor:
         """
-        Runs the Q network.
+        Runs the actor network.
         Override this function with your own.
 
-        :param x: The input observations
-        :return: The output Q values of the Q network
+        :param obs: The input observations
+        :return: The deterministic action of the actor
         """
         raise NotImplementedError
 
     def forward_critic1(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
-        Runs the Q network.
+        Runs the first critic network.
         Override this function with your own.
 
-        :param x: The input observations
-        :return: The output Q values of the Q network
+        :param obs: The input observations
+        :param action: The input actions
+        :return: The output Q values of the critic network
         """
         raise NotImplementedError
 
     def forward_critic2(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
-        Runs the Q network.
+        Runs the second critic network.
         Override this function with your own.
 
-        :param x: The input observations
-        :return: The output Q values of the Q network
+        :param obs: The input observations
+        :param action: The input actions
+        :return: The output Q values of the critic network
         """
         raise NotImplementedError
 
-    def forward_actor_target(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_actor_target(self, obs: torch.Tensor) -> torch.Tensor:
         """
-        Runs the Q network.
+        Runs the target actor network.
         Override this function with your own.
 
-        :param x: The input observations
-        :return: The output Q values of the Q network
+        :param obs: The input observations
+        :return: The deterministic action of the actor
         """
         raise NotImplementedError
 
     def forward_critic_target1(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
-        Runs the target critic network.
+        Runs the first target critic network.
         Override this function with your own.
 
-        :param x: The input observations
-        :return: The output Q values of the target Q network
+        :param obs: The input observations
+        :param action: The input actions
+        :return: The output Q values of the critic network
         """
         raise NotImplementedError
 
     def forward_critic_target2(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
-        Runs the target critic network.
+        Runs the second critic network.
         Override this function with your own.
 
-        :param x: The input observations
-        :return: The output Q values of the target Q network
+        :param obs: The input observations
+        :param action: The input actions
+        :return: The output Q values of the critic network
         """
         raise NotImplementedError
 
-    def update_targets(self):
+    def update_targets(self) -> None:
         """
-        Function to update the target Q network periodically.
+        Function to update the target networks periodically.
         Override this function with your own.
         """
         raise NotImplementedError
@@ -163,14 +169,15 @@ class TD3(OffPolicyModel):
         Function to set up the optimizer.
         The first optimizer should be for the critics.
         The second should be the actor.
-        Ovveride this function with your own.
+        Overide this function with your own.
+
         :return: The critic optimiser, followed by the actor optimiser
         """
         raise NotImplementedError
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         """
-        Specifies the update step for TD3. Override this if you wish to modify the A2C algorithm
+        Specifies the update step for TD3. Override this if you wish to modify the TD3 algorithm
         """
 
         if self.num_timesteps < self.warmup_length:

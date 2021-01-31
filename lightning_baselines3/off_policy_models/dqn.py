@@ -111,7 +111,7 @@ class DQN(OffPolicyModel):
         raise NotImplementedError
 
 
-    def update_target(self):
+    def update_target(self) -> None:
         """
         Function to update the target Q network periodically.
         Override this function with your own.
@@ -121,7 +121,7 @@ class DQN(OffPolicyModel):
 
     def training_step(self, batch, batch_idx):
         """
-        Specifies the update step for DQN. Override this if you wish to modify the A2C algorithm
+        Specifies the update step for DQN. Override this if you wish to modify the DQN algorithm
         """
         if self.num_timesteps < self.warmup_length:
             return
