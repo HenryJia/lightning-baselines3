@@ -97,7 +97,7 @@ if __name__ == '__main__':
         warmup_length=10000,
         )
 
-    trainer = pl.Trainer(max_epochs=300, gradient_clip_val=0.5)
+    trainer = pl.Trainer(max_epochs=30, gradient_clip_val=0.5)
     trainer.fit(model)
     print(model.num_timesteps)
 

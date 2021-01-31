@@ -80,7 +80,6 @@ class OnPolicyModel(BaseModel):
             gae_lambda=self.gae_lambda,
             n_envs=self.n_envs,
         )
-        self.save_hyperparameters()
 
 
     def forward(self, obs: GymObs) -> Tuple[torch.distributions.Distribution, torch.Tensor]:

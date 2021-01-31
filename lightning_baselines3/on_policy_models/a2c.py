@@ -81,8 +81,6 @@ class A2C(OnPolicyModel):
         self.value_coef = value_coef
         self.entropy_coef = entropy_coef
 
-        self.save_hyperparameters()
-
 
     def training_step(self, batch, batch_idx):
         """

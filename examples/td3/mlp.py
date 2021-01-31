@@ -99,13 +99,13 @@ class Model(TD3):
                 parents=[parent_parser], add_help=False)
         else:
             parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument('--lr', type=float, default=3e-4)
+        parser.add_argument('--lr', type=float, default=1e-3)
         parser.add_argument('--hidden_size', type=int, default=64)
         parser.add_argument('--tau', type=float, default=0.005)
         parser.add_argument('--buffer_length', type=int, default=int(1e6))
         parser.add_argument('--warmup_length', type=int, default=100)
         parser.add_argument('--batch_size', type=int, default=256)
-        parser.add_argument('--train_freq', type=int, default=4)
+        parser.add_argument('--train_freq', type=int, default=-1)
         parser.add_argument('--num_rollouts', type=int, default=10)
         parser.add_argument('--episodes_per_rollout', type=int, default=1)
         parser.add_argument('--gradient_steps', type=int, default=-1)
@@ -151,7 +151,7 @@ if __name__ == '__main__':
 
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             monitor='val_reward_mean',
-            dirpath=args.env+'_dqn_mlp',
+            dirpath=args.env+'_td3_mlp',
             filename='mlp-{epoch:02d}-{val_reward_mean:.2f}.pl',
             save_top_k=1,
             mode='max')

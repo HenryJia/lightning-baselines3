@@ -102,7 +102,6 @@ class BaseModel(pl.LightningModule):
             raise ValueError("generalized State-Dependent Exploration (gSDE) can only be used with continuous actions.")
 
         self.reset()
-        self.save_hyperparameters()
 
 
     def predict(self, obs: GymObs, deterministic: bool = False) -> np.ndarray:
