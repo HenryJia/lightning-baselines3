@@ -2,6 +2,7 @@ import gym
 import numpy as np
 import pytest
 from gym import spaces
+from packaging import version
 
 from ..envs.bit_flipping_env import BitFlippingEnv
 from ..envs.identity_env import (
@@ -27,13 +28,14 @@ def test_env(env_id):
     with pytest.warns(None) as record:
         check_env(env)
 
-    # Pendulum-v0 will produce a warning because the action space is
-    # in [-2, 2] and not [-1, 1]
-    if env_id == "Pendulum-v0":
-        assert len(record) == 1
-    else:
-        # The other environments must pass without warning
-        assert len(record) == 0
+    if version.parse(np.__version__) < version.parse('1.2.0'):
+        # Pendulum-v0 will produce a warning because the action space is
+        # in [-2, 2] and not [-1, 1]
+        if env_id == "Pendulum-v0":
+            assert len(record) == 1
+        else:
+            # The other environments must pass without warning
+            assert len(record) == 0
 
 
 @pytest.mark.parametrize("env_class", ENV_CLASSES)
