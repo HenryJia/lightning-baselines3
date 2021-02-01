@@ -5,18 +5,19 @@ from gym import spaces
 import torch
 import torch.nn.functional as F
 
-from lightning_baselines3.off_policy_models import OffPolicyModel
+from lightning_baselines3.off_policy_models import TD3
 from lightning_baselines3.common.type_aliases import GymEnv
 
 
-class TD3(OffPolicyModel):
+class DDPG(TD3):
     """
-    Twin Delayed DDPG (TD3)
-    Addressing Function Approximation Error in Actor-Critic Methods.
+    Deep Deterministic Policy Gradient (DDPG).
 
-    Original implementation: https://github.com/sfujim/TD3
-    Paper: https://arxiv.org/abs/1802.09477
-    Introduction to TD3: https://spinningup.openai.com/en/latest/algorithms/td3.html
+    Deterministic Policy Gradient: http://proceedings.mlr.press/v32/silver14.pdf
+    DDPG Paper: https://arxiv.org/abs/1509.02971
+    Introduction to DDPG: https://spinningup.openai.com/en/latest/algorithms/ddpg.html
+
+    Note: we treat DDPG as a special case of its successor TD3.
 
     :param env: The environment to learn from. If registered in Gym,
         can be str. Can be None for loading trained models
@@ -68,7 +69,7 @@ class TD3(OffPolicyModel):
         verbose: int = 0,
         seed: Optional[int] = None,
     ):
-        super(TD3, self).__init__(
+        super(DDPG, self).__init__(
             env=env,
             eval_env=eval_env,
             batch_size=batch_size,
@@ -82,21 +83,9 @@ class TD3(OffPolicyModel):
             gamma=gamma,
             verbose=verbose,
             seed=seed,
-            squashed_actions=squashed_actions,
-            use_sde=False,  # TD3 Does not support SDE since DQN only supports Discrete actions spaces
-            use_sde_at_warmup=False,
-            sde_sample_freq=-1)
+            squashed_actions=squashed_actions)
 
-        # We need manual optimization for this
-        self.automatic_optimization = False
-
-        assert isinstance(self.action_space, spaces.Box), "TD3 only supports environments with Box action spaces"
-
-        self.policy_delay = policy_delay
-        self.target_noise_clip = target_noise_clip
-        self.target_policy_noise = target_policy_noise
-
-        self.n_critics = 2  # Set this to 1 for DDPG
+        self.n_critics = 1  # Set this to 1 for DDPG
 
     def forward_actor(self, obs: torch.Tensor) -> torch.Tensor:
         """
@@ -119,17 +108,6 @@ class TD3(OffPolicyModel):
         """
         raise NotImplementedError
 
-    def forward_critic2(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
-        """
-        Runs the second critic network.
-        Override this function with your own.
-
-        :param obs: The input observations
-        :param action: The input actions
-        :return: The output Q values of the critic network
-        """
-        raise NotImplementedError
-
     def forward_actor_target(self, obs: torch.Tensor) -> torch.Tensor:
         """
         Runs the target actor network.
@@ -137,17 +115,6 @@ class TD3(OffPolicyModel):
 
         :param obs: The input observations
         :return: The deterministic action of the actor
-        """
-        raise NotImplementedError
-
-    def forward_critic_target1(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
-        """
-        Runs the first target critic network.
-        Override this function with your own.
-
-        :param obs: The input observations
-        :param action: The input actions
-        :return: The output Q values of the critic network
         """
         raise NotImplementedError
 
@@ -179,57 +146,3 @@ class TD3(OffPolicyModel):
         :return: The critic optimiser, followed by the actor optimiser
         """
         raise NotImplementedError
-
-    def training_step(self, batch, batch_idx, optimizer_idx):
-        """
-        Specifies the update step for TD3. Override this if you wish to modify the TD3 algorithm
-        """
-
-        if self.num_timesteps < self.warmup_length:
-            return
-
-        opt_critic, opt_actor = self.optimizers(use_pl_optimizer=True)
-
-        with torch.no_grad():
-            noise = torch.randn_like(batch.actions) * self.target_policy_noise
-            noise = noise.clamp(-self.target_noise_clip, self.target_noise_clip)
-            next_actions = self.forward_actor_target(batch.next_observations) + noise
-
-            # Compute the target Q value: min over all critics targets
-            target1 = self.forward_critic_target1(batch.next_observations, next_actions)
-
-            if self.n_critics == 2:
-                target2 = self.forward_critic_target2(batch.next_observations, next_actions)
-                target_q = torch.minimum(target1, target2)
-            elif self.n_critics == 1:
-                target_q = target1
-            target_q = batch.rewards + (1 - batch.dones) * self.gamma * target_q
-
-        # Get current Q estimates for each critic network
-        current_q1 = self.forward_critic1(batch.observations, batch.actions)
-
-        # Compute critic loss
-        critic_loss = F.mse_loss(current_q1, target_q)
-        self.log('critic_loss', critic_loss, on_step=True, prog_bar=True, logger=True)
-
-        # Repeat for the other critic if we have 2
-        if self.n_critics == 2:
-            current_q2 = self.forward_critic2(batch.observations, batch.actions)
-            critic_loss = critic_loss + F.mse_loss(current_q2, target_q)
-
-        self.manual_backward(critic_loss, opt_critic)
-        opt_critic.step()
-        opt_critic.zero_grad()
-
-        if batch_idx % self.policy_delay == 0:  # Optimize the actors
-            # Compute actor loss
-            actor_loss = -self.forward_critic1(batch.observations, self.forward_actor(batch.observations))
-            actor_loss = actor_loss.mean()
-
-            self.manual_backward(actor_loss, opt_actor)
-            opt_actor.step()
-            opt_actor.zero_grad()
-
-            self.log('actor_loss', actor_loss, on_step=True, prog_bar=True, logger=True)
-
-            self.update_targets()

@@ -13,12 +13,12 @@ from torch import distributions
 
 import pytorch_lightning as pl
 
-from lightning_baselines3.off_policy_models import TD3
+from lightning_baselines3.off_policy_models import DDPG
 from lightning_baselines3.common.utils import polyak_update
 
 
 
-class DummyModel(TD3):
+class DummyModel(DDPG):
     def __init__(self, *args, **kwargs):
         super(DummyModel, self).__init__(*args, **kwargs)
         self.actor = nn.Sequential(
@@ -43,14 +43,8 @@ class DummyModel(TD3):
     def forward_critic1(self, obs, action):
         return self.critic1(torch.cat([obs, action], dim=1))
 
-    def forward_critic2(self, obs, action):
-        return self.critic2(torch.cat([obs, action], dim=1))
-
     def forward_critic_target1(self, obs, action):
         return self.critic_target1(torch.cat([obs, action], dim=1))
-
-    def forward_critic_target2(self, obs, action):
-        return self.critic_target2(torch.cat([obs, action], dim=1))
 
     def update_targets(self):
         polyak_update(self.actor.parameters(), self.actor_target.parameters(), tau=0.005)
@@ -71,7 +65,7 @@ class DummyModel(TD3):
 
 
 @pytest.mark.parametrize("env_id", ["MountainCarContinuous-v0", "LunarLanderContinuous-v2"])
-def test_off_td3_model(env_id):
+def test_off_ddpg_model(env_id):
     """
     Check that environmnent integrated in Gym pass the test.
 

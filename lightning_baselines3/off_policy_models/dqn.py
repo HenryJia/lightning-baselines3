@@ -18,7 +18,11 @@ from lightning_baselines3.common.type_aliases import GymEnv
 
 class DQN(OffPolicyModel):
     """
-    The base for On-Policy algorithms (ex: A2C/PPO).
+    Deep Q-Network (DQN)
+
+    Paper: https://arxiv.org/abs/1312.5602, https://www.nature.com/articles/nature14236
+    Default hyperparameters are taken from the nature paper,
+    except for the optimizer and learning rate that were taken from Stable Baselines defaults.
 
     :param env: The environment to learn from
         (if registered in Gym, can be str. Can be None for loading trained models)

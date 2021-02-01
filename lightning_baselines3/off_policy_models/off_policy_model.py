@@ -18,7 +18,7 @@ from lightning_baselines3.common.vec_env import VecEnv
 
 class OffPolicyModel(BaseModel):
     """
-    The base for On-Policy algorithms (ex: A2C/PPO).
+    The base for Off-Policy algorithms (ex: SAC/TD3)
 
     :param env: The environment to learn from
         (if registered in Gym, can be str. Can be None for loading trained models)
