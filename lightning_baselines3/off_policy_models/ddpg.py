@@ -118,9 +118,9 @@ class DDPG(TD3):
         """
         raise NotImplementedError
 
-    def forward_critic_target2(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+    def forward_critic_target1(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
-        Runs the second critic network.
+        Runs the first critic network.
         Override this function with your own.
 
         :param obs: The input observations
