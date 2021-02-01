@@ -78,6 +78,5 @@ if __name__ == '__main__':
 
     trainer = pl.Trainer(max_epochs=30, gradient_clip_val=0.5)
     trainer.fit(model)
-    print(model.num_timesteps)
 
     model.evaluate(num_eval_episodes=10, render=True)
