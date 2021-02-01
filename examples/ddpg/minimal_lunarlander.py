@@ -1,15 +1,7 @@
 import copy
-from collections import OrderedDict
-
-import pytest
-
-import gym
-from gym import spaces
 
 import torch
 from torch import nn
-import torch.nn.functional as F
-from torch import distributions
 
 import pytorch_lightning as pl
 
@@ -17,15 +9,26 @@ from lightning_baselines3.off_policy_models import DDPG
 from lightning_baselines3.common.utils import polyak_update
 
 
-
-class DummyModel(DDPG):
+class Model(DDPG):
     def __init__(self, *args, **kwargs):
-        super(DummyModel, self).__init__(*args, **kwargs)
+        super(Model, self).__init__(*args, **kwargs)
+
+        # Note: The output layer of the actor must be Tanh activated
         self.actor = nn.Sequential(
-            nn.Linear(self.observation_space.shape[0], self.action_space.shape[0]),
+            nn.Linear(self.observation_space.shape[0], 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, self.action_space.shape[0]),
             nn.Tanh())
-        self.actor_target = nn.Linear(self.observation_space.shape[0], self.action_space.shape[0])
-        self.critic1 = nn.Linear(self.observation_space.shape[0] + self.action_space.shape[0], 1)
+
+        in_dim = self.observation_space.shape[0] + self.action_space.shape[0]
+        self.critic1 = nn.Sequential(
+            nn.Linear(in_dim, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 1))
 
         self.actor_target = copy.deepcopy(self.actor)
         self.critic_target1 = copy.deepcopy(self.critic1)
@@ -45,13 +48,20 @@ class DummyModel(DDPG):
         return self.critic_target1(torch.cat([obs, action], dim=1))
 
     def update_targets(self):
-        polyak_update(self.actor.parameters(), self.actor_target.parameters(), tau=0.005)
-        polyak_update(self.critic1.parameters(), self.critic_target1.parameters(), tau=0.005)
+        polyak_update(
+            self.actor.parameters(),
+            self.actor_target.parameters(),
+            tau=0.005)
+        polyak_update(
+            self.critic1.parameters(),
+            self.critic_target1.parameters(),
+            tau=0.005)
 
     def predict(self, x, deterministic=True):
         out = self.actor(x)
         if not deterministic:
             out = out + torch.randn_like(out) * 0.1
+        out = torch.clamp(out, -1, 1)
         return out.cpu().numpy()
 
     def configure_optimizers(self):
@@ -60,23 +70,14 @@ class DummyModel(DDPG):
         return opt_critic, opt_actor
 
 
-@pytest.mark.parametrize("env_id", ["MountainCarContinuous-v0", "LunarLanderContinuous-v2"])
-def test_off_ddpg_model(env_id):
-    """
-    Check that environmnent integrated in Gym pass the test.
+if __name__ == '__main__':
+    model = Model(
+        env='LunarLanderContinuous-v2',
+        eval_env='LunarLanderContinuous-v2',
+        warmup_length=10000)
 
-    :param env_id: (str)
-    """
-    model = DummyModel(
-        env_id,
-        eval_env=env_id,
-        batch_size=256,
-        buffer_length=1000,
-        warmup_length=100,
-        num_rollouts=1,
-        num_eval_episodes=10,
-        gamma=0.9,
-        seed=1234)
-
-    trainer = pl.Trainer(max_epochs=2, terminate_on_nan=True)
+    trainer = pl.Trainer(max_epochs=30, gradient_clip_val=0.5)
     trainer.fit(model)
+    print(model.num_timesteps)
+
+    model.evaluate(num_eval_episodes=10, render=True)
