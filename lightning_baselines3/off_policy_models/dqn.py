@@ -11,7 +11,7 @@ from torch import distributions
 
 import pytorch_lightning as pl
 
-from lightning_baselines3.off_policy_models.off_policy_model import OffPolicyModel
+from lightning_baselines3.off_policy_models import OffPolicyModel
 from lightning_baselines3.common.type_aliases import GymEnv
 
 
