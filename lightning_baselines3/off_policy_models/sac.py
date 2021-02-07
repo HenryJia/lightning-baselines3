@@ -4,6 +4,7 @@ import math
 
 import gym
 from gym import spaces
+import numpy as np
 
 import torch
 from torch import nn
@@ -67,7 +68,11 @@ class SAC(OffPolicyModel):
         verbose: int = 0,
         seed: Optional[int] = None,
     ):
-        super(AC, self).__init__(
+        self.entropy_coef = entropy_coef
+        self.target_entropy = target_entropy
+        self.target_update_interval = target_update_interval
+
+        super(SAC, self).__init__(
             env=env,
             eval_env=eval_env,
             batch_size=batch_size,
@@ -91,10 +96,6 @@ class SAC(OffPolicyModel):
         # We need manual optimization for this
         self.automatic_optimization = False
 
-        self.entropy_coef = entropy_coef
-        self.target_entropy = target_entropy
-        self.target_update_interval = target_update_interval
-
 
     def reset(self):
         """
@@ -111,7 +112,7 @@ class SAC(OffPolicyModel):
             self.target_entropy = float(self.target_entropy)
 
         if isinstance(self.entropy_coef, str):
-            if not self.hasattr(self, log_entropy_coef):
+            if not hasattr(self, 'log_entropy_coef'):
                 assert self.entropy_coef.startswith("auto")
                 # Default initial value of entropy_coef when learned
                 init_value = 1.0
@@ -122,8 +123,8 @@ class SAC(OffPolicyModel):
                 # Note: we optimize the log of the entropy coeff which is slightly different from the paper
                 # as discussed in https://github.com/rail-berkeley/softlearning/issues/37
                 self.log_entropy_coef = torch.log(torch.ones(1, device=self.device) * init_value)
-                self.log_entropy_coef = nn.Parameter([self.log_entropy_coef, requres_grad=True])
-                self.entropy_coef_optimizer = torch.optim.Adam([self.log_entropy_coef], lr=self.lr_schedule(1))
+                self.log_entropy_coef = nn.Parameter(self.log_entropy_coef, requires_grad=True)
+                self.entropy_coef_optimizer = torch.optim.Adam([self.log_entropy_coef], lr=3e-4)
         else:
             # I know this isn't very efficient but it makes the code cleaner
             # and it's only one extra operation
@@ -141,7 +142,7 @@ class SAC(OffPolicyModel):
         raise NotImplementedError
 
 
-    def forward_critics(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_critics(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
         Runs the target Q network.
         Override this function with your own.
@@ -152,7 +153,7 @@ class SAC(OffPolicyModel):
         raise NotImplementedError
 
 
-    def forward_critic_targets(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_critic_targets(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
         Runs the target Q network.
         Override this function with your own.
@@ -171,7 +172,7 @@ class SAC(OffPolicyModel):
         raise NotImplementedError
 
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, optimizer_idx):
         """
         Specifies the update step for DQN. Override this if you wish to modify the DQN algorithm
         """
@@ -187,20 +188,20 @@ class SAC(OffPolicyModel):
         log_probs = dist.log_prob(actions)
 
         entropy_coef = torch.exp(self.log_entropy_coef)
-        if hasattr(self, entropy_coef_optimizer):
+        if hasattr(self, 'entropy_coef_optimizer'):
             # Important: detach the variable from the graph
             # so we don't change it with other losses
             # see https://github.com/rail-berkeley/softlearning/issues/60
             entropy_coef = entropy_coef.detach()
-            entropy_coef_loss = -(self.log_entropy_coef * (log_prob + self.target_entropy).detach()).mean()
+            entropy_coef_loss = -(self.log_entropy_coef * (log_probs + self.target_entropy).detach()).mean()
             self.log('entropy_coef_loss', entropy_coef_loss, on_step=True, prog_bar=True, logger=True)
 
-        self.log('entropy_coefs', entropy_coefs, on_step=True, prog_bar=False, logger=True)
+        self.log('entropy_coef', entropy_coef, on_step=True, prog_bar=False, logger=True)
 
         # Optimize entropy coefficient, also called
         # entropy temperature or alpha in the paper
-        if hasattr(self, entropy_coef_optimizer):
-            self.manual_backward(entropy_coef_loss, entropy_coef_optimizer)
+        if hasattr(self, 'entropy_coef_optimizer'):
+            self.manual_backward(entropy_coef_loss, self.entropy_coef_optimizer)
             self.entropy_coef_optimizer.step()
             self.entropy_coef_optimizer.zero_grad()
 
@@ -208,21 +209,23 @@ class SAC(OffPolicyModel):
             # Select action according to policy
             next_dist = self.forward_actor(batch.next_observations)
             next_actions = next_dist.sample()
-            next_log_probs = next_dist.log_prob(batch.next_actions)
+            next_log_probs = next_dist.log_prob(next_actions)
             # Compute the target Q value: min over all critics targets
-            targets = torch.cat(self.forward_critic_targets(replay_data.next_observations, next_actions), dim=1)
-            target_q, _ = torch.min(targets, dim=1, keepdim=True)
+            targets = self.forward_critic_targets(batch.next_observations, next_actions)
+            target_q = torch.minimum(*targets)
             # add entropy term
+            print(next_log_probs.shape, batch.next_observations.shape)
             target_q = target_q - entropy_coef * next_log_probs.reshape(-1, 1)
             # td error + entropy term
-            q_backup = replay_data.rewards + (1 - replay_data.dones) * self.gamma * target_q
+            target_q = batch.rewards + (1 - batch.dones) * self.gamma * target_q
 
         # Get current Q estimates for each critic network
         # using action from the replay buffer
-        current_q_estimates = self.forward_critics(replay_data.observations, replay_data.actions)
+        current_q_estimates = self.forward_critics(batch.observations, batch.actions)
 
         # Compute critic loss
-        critic_loss = 0.5 * sum([F.mse_loss(current_q, q_backup) for current_q in current_q_estimates])
+        critic_loss = torch.stack([F.mse_loss(current_q, target_q) for current_q in current_q_estimates])
+        critic_loss = torch.mean(critic_loss)
         self.log('critic_loss', critic_loss, on_step=True, prog_bar=True, logger=True)
 
         # Optimize the critic
@@ -233,9 +236,9 @@ class SAC(OffPolicyModel):
         # Compute actor loss
         # Alternative: actor_loss = torch.mean(log_prob - qf1_pi)
         # Mean over all critic networks
-        q_values_pi = torch.cat(self.critic.forward(replay_data.observations, actions_pi), dim=1)
-        min_qf_pi, _ = torch.min(q_values_pi, dim=1, keepdim=True)
-        actor_loss = (entropy_coef.detach() * log_prob - min_qf_pi).mean()
+        q_values_pi = self.forward_critics(batch.observations, actions)
+        min_qf_pi = torch.minimum(*q_values_pi)
+        actor_loss = (entropy_coef * log_probs - min_qf_pi).mean()
         self.log('actor_loss', actor_loss, on_step=True, prog_bar=True, logger=True)
 
         # Optimize the actor
@@ -244,5 +247,5 @@ class SAC(OffPolicyModel):
         opt_actor.zero_grad()
 
         # Update target networks
-        if gradient_step % self.target_update_interval == 0:
+        if batch_idx % self.target_update_interval == 0:
             self.update_targets()
