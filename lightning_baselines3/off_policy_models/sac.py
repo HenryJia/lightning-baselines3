@@ -128,7 +128,7 @@ class SAC(OffPolicyModel):
         else:
             # I know this isn't very efficient but it makes the code cleaner
             # and it's only one extra operation
-            self.log_entropy_coef = matorch.log(float(self.entropy_coef))
+            self.log_entropy_coef = torch.log(float(self.entropy_coef))
 
 
     def forward_actor(self, x: torch.Tensor) -> torch.Tensor:
