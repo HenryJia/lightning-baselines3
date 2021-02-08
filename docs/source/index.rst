@@ -8,7 +8,7 @@ Welcome to Lightning-Baselines3 docs - Reliable and Modular Reinforcement Learni
 
 `Lightning Baselines3 (LB3) <https://github.com/HenryJia/lightning-baselines3>`_ is a set of reliable and modular implementations of reinforcement learning algorithms built on top of PyTorch Lightning. It is adapted from `Stable Baselines3 (SB3) <https://github.com/DLR-RM/stable-baselines3>`_
 
-Github repository: https://github.com/DLR-RM/stable-baselines3
+Github repository: https://github.com/HenryJia/lightning-baselines3
 
 Main Features
 --------------
