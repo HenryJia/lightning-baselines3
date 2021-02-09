@@ -6,6 +6,7 @@ import gym
 import pybullet_envs
 
 import torch
+from torch import distributions
 from torch import nn
 
 import pytorch_lightning as pl
@@ -16,12 +17,11 @@ pybullet_envs.getList()
 
 
 class Model(SAC):
-    def __init__(self, hidden_size, lr, tau, action_noise, *args, **kwargs):
+    def __init__(self, hidden_size, lr, tau, *args, **kwargs):
         super(Model, self).__init__(*args, **kwargs)
 
         self.lr = lr
         self.tau = tau
-        self.action_noise = action_noise
 
         # Note: The output layer of the actor must be Tanh activated
         self.actor = nn.Sequential(
@@ -110,14 +110,11 @@ class Model(SAC):
         parser.add_argument('--num_rollouts', type=int, default=1000)
         parser.add_argument('--episodes_per_rollout', type=int, default=-1)
         parser.add_argument('--gradient_steps', type=int, default=1)
-        parser.add_argument('--target_policy_noise', type=float, default=0.2)
-        parser.add_argument('--target_noise_clip', type=float, default=0.5)
         parser.add_argument('--num_eval_episodes', type=int, default=10)
         parser.add_argument('--target_update_interval', type=int, default=1)
         parser.add_argument('--gamma', type=float, default=0.99)
         parser.add_argument('--entropy_coef', default='auto')
         parser.add_argument('--target_entropy', default='auto')
-        parser.add_argument('--gamma', type=float, default=0.99)
         parser.add_argument('--use_sde', action='store_true')
         parser.add_argument('--sde_sample_freq', type=int, default=-1)
         parser.add_argument('--use_sde_at_warmup', action='store_true')
@@ -157,7 +154,7 @@ if __name__ == '__main__':
 
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             monitor='val_reward_mean',
-            dirpath=args.env+'_td3_mlp',
+            dirpath=args.env+'_sac_mlp',
             filename='mlp-{epoch:02d}-{val_reward_mean:.2f}.pl',
             save_top_k=1,
             mode='max')

@@ -214,7 +214,7 @@ class SAC(OffPolicyModel):
             targets = self.forward_critic_targets(batch.next_observations, next_actions)
             target_q = torch.minimum(*targets)
             # add entropy term
-            target_q = target_q - entropy_coef * next_log_probs.reshape(-1, 1)
+            target_q = target_q - entropy_coef * next_log_probs[..., None]
             # td error + entropy term
             target_q = batch.rewards + (1 - batch.dones) * self.gamma * target_q
 
@@ -237,7 +237,7 @@ class SAC(OffPolicyModel):
         # Mean over all critic networks
         q_values_pi = self.forward_critics(batch.observations, actions)
         min_qf_pi = torch.minimum(*q_values_pi).detach()
-        actor_loss = (entropy_coef * log_probs - min_qf_pi).mean()
+        actor_loss = (entropy_coef * log_probs[..., None] - min_qf_pi).mean()
         self.log('actor_loss', actor_loss, on_step=True, prog_bar=True, logger=True)
 
         # Optimize the actor
