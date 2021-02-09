@@ -1,15 +1,8 @@
 import copy
-from collections import OrderedDict
-
-import pytest
-
-import gym
-from gym import spaces
 
 import torch
-from torch import nn
-import torch.nn.functional as F
 from torch import distributions
+from torch import nn
 
 import pytorch_lightning as pl
 
@@ -17,13 +10,32 @@ from lightning_baselines3.off_policy_models import SAC
 from lightning_baselines3.common.utils import polyak_update
 
 
-
-class DummyModel(SAC):
+class Model(SAC):
     def __init__(self, *args, **kwargs):
-        super(DummyModel, self).__init__(*args, **kwargs)
-        self.actor = nn.Linear(self.observation_space.shape[0], 2 * self.action_space.shape[0])
-        self.critic1 = nn.Linear(self.observation_space.shape[0] + self.action_space.shape[0], 1)
-        self.critic2 = nn.Linear(self.observation_space.shape[0] + self.action_space.shape[0], 1)
+        super(Model, self).__init__(*args, **kwargs)
+
+        # Note: The output layer of the actor must be Tanh activated
+        self.actor = nn.Sequential(
+            nn.Linear(self.observation_space.shape[0], 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, self.action_space.shape[0] * 2))
+
+        in_dim = self.observation_space.shape[0] + self.action_space.shape[0]
+        self.critic1 = nn.Sequential(
+            nn.Linear(in_dim, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 1))
+
+        self.critic2 = nn.Sequential(
+            nn.Linear(in_dim, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+            nn.Linear(256, 1))
 
         self.critic_target1 = copy.deepcopy(self.critic1)
         self.critic_target2 = copy.deepcopy(self.critic2)
@@ -47,12 +59,18 @@ class DummyModel(SAC):
     def forward_critic_targets(self, obs, action):
         out = [
             self.critic_target1(torch.cat([obs, action], dim=1)),
-            self.critic_target1(torch.cat([obs, action], dim=1))]
+            self.critic_target2(torch.cat([obs, action], dim=1))]
         return out
 
     def update_targets(self):
-        polyak_update(self.critic1.parameters(), self.critic_target1.parameters(), tau=0.005)
-        polyak_update(self.critic2.parameters(), self.critic_target2.parameters(), tau=0.005)
+        polyak_update(
+            self.critic1.parameters(),
+            self.critic_target1.parameters(),
+            tau=0.005)
+        polyak_update(
+            self.critic2.parameters(),
+            self.critic_target2.parameters(),
+            tau=0.005)
 
     def predict(self, x, deterministic=True):
         out = self.actor(x)
@@ -67,28 +85,20 @@ class DummyModel(SAC):
         return out.cpu().numpy()
 
     def configure_optimizers(self):
-        opt_actor = torch.optim.Adam(self.actor.parameters(), lr=1e-3)
+        opt_actor = torch.optim.Adam(self.actor.parameters(), lr=3e-4)
         opt_critic = torch.optim.Adam(
-            list(self.critic1.parameters()) + list(self.critic2.parameters()), lr=1e-3)
+            list(self.critic1.parameters()) + list(self.critic2.parameters()),
+            lr=3e-4)
         return opt_critic, opt_actor
 
 
-@pytest.mark.parametrize("env_id", ["MountainCarContinuous-v0", "LunarLanderContinuous-v2"])
-def test_off_sac_model(env_id):
-    """
-    Check that environmnent integrated in Gym pass the test.
+if __name__ == '__main__':
+    model = Model(
+        env='LunarLanderContinuous-v2',
+        eval_env='LunarLanderContinuous-v2',
+        warmup_length=1000)
 
-    :param env_id: (str)
-    """
-    model = DummyModel(
-        env_id,
-        eval_env=env_id,
-        batch_size=256,
-        buffer_length=1000,
-        warmup_length=100,
-        num_eval_episodes=10,
-        gamma=0.9,
-        seed=1234)
-
-    trainer = pl.Trainer(max_epochs=2, terminate_on_nan=True)
+    trainer = pl.Trainer(max_epochs=500, gradient_clip_val=0.5, gpus=[0])
     trainer.fit(model)
+
+    model.evaluate(num_eval_episodes=10, render=True)

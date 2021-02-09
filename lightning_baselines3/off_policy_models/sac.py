@@ -123,7 +123,7 @@ class SAC(OffPolicyModel):
                 # Note: we optimize the log of the entropy coeff which is slightly different from the paper
                 # as discussed in https://github.com/rail-berkeley/softlearning/issues/37
                 self.log_entropy_coef = torch.log(torch.ones(1, device=self.device) * init_value)
-                self.log_entropy_coef = nn.Parameter(self.log_entropy_coef, requires_grad=True)
+                self.log_entropy_coef = nn.Parameter(self.log_entropy_coef.requires_grad_(True))
                 self.entropy_coef_optimizer = torch.optim.Adam([self.log_entropy_coef], lr=3e-4)
         else:
             # I know this isn't very efficient but it makes the code cleaner
@@ -177,8 +177,8 @@ class SAC(OffPolicyModel):
         Specifies the update step for DQN. Override this if you wish to modify the DQN algorithm
         """
         # We need to sample because `log_std` may have changed between two gradient steps
-        if self.use_sde:
-            self.reset_noise()
+        if self.num_timesteps < self.warmup_length:
+            return
 
         opt_critic, opt_actor = self.optimizers(use_pl_optimizer=True)
 
@@ -214,7 +214,6 @@ class SAC(OffPolicyModel):
             targets = self.forward_critic_targets(batch.next_observations, next_actions)
             target_q = torch.minimum(*targets)
             # add entropy term
-            print(next_log_probs.shape, batch.next_observations.shape)
             target_q = target_q - entropy_coef * next_log_probs.reshape(-1, 1)
             # td error + entropy term
             target_q = batch.rewards + (1 - batch.dones) * self.gamma * target_q
@@ -237,7 +236,7 @@ class SAC(OffPolicyModel):
         # Alternative: actor_loss = torch.mean(log_prob - qf1_pi)
         # Mean over all critic networks
         q_values_pi = self.forward_critics(batch.observations, actions)
-        min_qf_pi = torch.minimum(*q_values_pi)
+        min_qf_pi = torch.minimum(*q_values_pi).detach()
         actor_loss = (entropy_coef * log_probs - min_qf_pi).mean()
         self.log('actor_loss', actor_loss, on_step=True, prog_bar=True, logger=True)
 
