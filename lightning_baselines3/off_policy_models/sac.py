@@ -184,7 +184,7 @@ class SAC(OffPolicyModel):
 
         # Action by the current actor for the sampled state
         dist = self.forward_actor(batch.observations)
-        actions = dist.rsample()
+        actions = dist.sample()
         log_probs = dist.log_prob(actions)
 
         entropy_coef = torch.exp(self.log_entropy_coef)

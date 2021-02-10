@@ -134,30 +134,6 @@ class BaseModel(pl.LightningModule):
             super().save_hyperparameters(*include, frame=frame)
 
 
-    def sample_actions(
-        self, obs: np.ndarray, deterministic: bool = False
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Samples an action from the environment or from our model
-
-        :param obs: The input observation
-        :param deterministic: Whether we are sampling deterministically.
-            This argument has no effect if we are warming up.
-        :return: The action to step with, and the action to store in our buffer
-        """
-        with torch.no_grad():
-            obs = torch.tensor(obs).to(self.device)
-            actions = self.predict(obs, deterministic=deterministic)
-
-        if isinstance(self.action_space, gym.spaces.Box):
-            actions = np.clip(actions, self.action_space.low, self.action_space.high)
-        elif isinstance(self.action_space, (gym.spaces.Discrete,
-                                            gym.spaces.MultiDiscrete,
-                                            gym.spaces.MultiBinary)):
-            actions = actions.astype(np.int32)
-        return actions
-
-
     def evaluate(
         self,
         num_eval_episodes: int,
@@ -206,7 +182,14 @@ class BaseModel(pl.LightningModule):
                 not_reseted = False
 
             while not done:
-                action = self.sample_actions(obs, deterministic=deterministic)
+                with torch.no_grad():
+                    obs = torch.tensor(obs).to(self.device)
+                    action = self.predict(obs, deterministic=deterministic)
+
+                if isinstance(self.action_space, gym.spaces.Box):
+                    action = np.clip(action, self.action_space.low, self.action_space.high)
+                elif isinstance(self.action_space, gym.spaces.Discrete):
+                    action = action.astype(np.int32)
 
                 obs, reward, done, info = self.eval_env.step(action)
                 episode_rewards[-1] += reward

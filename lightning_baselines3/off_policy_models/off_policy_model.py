@@ -129,13 +129,11 @@ class OffPolicyModel(BaseModel):
 
 
     def scale_actions(
-        self, actions: np.ndarray, squashed: bool = False
-        ) -> np.ndarray:
+        self, actions: np.ndarray, squashed=False
+        ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Scale the action appropriately for spaces.Box based on whether they
-        are squashed between [-1, +1].
-        The buffered actions are always scaled between [-1, +1] but the actions
-        to step with are scaled to [action_space.low, action_space.high].
+        are squashed between [-1, 1]
 
         :param action: The input action
         :return: The action to step the environment with and the action to buffer with
@@ -144,40 +142,15 @@ class OffPolicyModel(BaseModel):
         high, low = self.action_space.high, self.action_space.low
         center = (high + low) / 2.0
         if squashed:
+            buffer_actions = actions
             actions = center + actions * (high - low) / 2.0
         else:
             actions = np.clip(
                 actions,
                 self.action_space.low,
                 self.action_space.high)
-        return actions
-
-
-    def sample_actions(
-        self, obs: np.ndarray, deterministic: bool = False
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Samples an action from the environment or from our model
-
-        :param obs: The input observation
-        :param deterministic: Whether we are sampling deterministically.
-            This argument has no effect if we are warming up.
-        :return: The action to step with, and the action to store in our buffer
-        """
-        with torch.no_grad():
-            # Convert to pytorch tensor
-            obs_tensor = torch.as_tensor(self._last_obs).to(device=self.device, dtype=torch.float32)
-            actions = self.predict(obs_tensor, deterministic=deterministic)
-
-        # Clip and scale actions appropriately
-        if isinstance(self.action_space, gym.spaces.Box):
-            actions = self.scale_actions(actions, self.squashed_actions)
-        elif isinstance(self.action_space, (gym.spaces.Discrete,
-                                            gym.spaces.MultiDiscrete,
-                                            gym.spaces.MultiBinary)):
-            actions = actions.astype(np.int32)
-            print('check')
-        return actions
+            buffer_actions = (actions - center) / (high - low) * 2.0
+        return actions, buffer_actions
 
 
     def collect_rollouts(self):
@@ -200,13 +173,33 @@ class OffPolicyModel(BaseModel):
 
             if self.num_timesteps < self.warmup_length:
                 actions = np.array([self.action_space.sample()])
+                if isinstance(self.action_space, gym.spaces.Box):
+                    actions, buffer_actions = self.scale_actions(actions, False)
+                else:
+                    buffer_actions = actions
             else:
-                actions = self.sample_actions(self._last_obs, deterministic=False)
+                with torch.no_grad():
+                    # Convert to pytorch tensor
+                    obs_tensor = torch.as_tensor(self._last_obs).to(device=self.device, dtype=torch.float32)
+                    actions = self.predict(obs_tensor, deterministic=False)
+
+                # Clip and scale actions appropriately
+                if isinstance(self.action_space, gym.spaces.Box):
+                    actions, buffer_actions = self.scale_actions(actions, self.squashed_actions)
+                elif isinstance(self.action_space, (gym.spaces.Discrete,
+                                                    gym.spaces.MultiDiscrete,
+                                                    gym.spaces.MultiBinary)):
+                    actions = actions.astype(np.int32)
+                    if isinstance(self.action_space, gym.spaces.Discrete):
+                        # Reshape in case of discrete action
+                        buffer_actions = actions.reshape(-1, 1)
+                else:
+                    buffer_actions = actions
 
             new_obs, rewards, dones, infos = self.env.step(actions)
 
             # The actions we buffer are always scaled between [-1, 1] if we're working with box
-            self.replay_buffer.add(self._last_obs, new_obs, actions, rewards, dones)
+            self.replay_buffer.add(self._last_obs, new_obs, buffer_actions, rewards, dones)
 
             self._last_obs = new_obs
             i += 1
@@ -224,7 +217,6 @@ class OffPolicyModel(BaseModel):
             return i
         else:
             return self.gradient_steps
-
 
     def training_epoch_end(self, outputs) -> None:
         """

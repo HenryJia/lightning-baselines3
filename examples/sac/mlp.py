@@ -13,7 +13,6 @@ import pytorch_lightning as pl
 
 from lightning_baselines3.off_policy_models import SAC
 from lightning_baselines3.common.utils import polyak_update
-from lightning_baselines3.common.distributions import SquashedMultivariateNormal
 pybullet_envs.getList()
 
 
@@ -56,7 +55,7 @@ class Model(SAC):
         out = list(torch.chunk(self.actor(x), 2, dim=1))
         out[1] = torch.diag_embed(
             torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
-        dist = SquashedMultivariateNormal(
+        dist = distributions.MultivariateNormal(
             loc=out[0], scale_tril=out[1])
         return dist
 
@@ -90,7 +89,7 @@ class Model(SAC):
             out = list(torch.chunk(out, 2, dim=1))
             out[1] = torch.diag_embed(
                 torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
-            out = SquashedMultivariateNormal(
+            out = distributions.MultivariateNormal(
                 loc=out[0], scale_tril=out[1]).sample()
         return out.cpu().numpy()
 

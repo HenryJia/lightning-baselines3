@@ -123,15 +123,15 @@ class OnPolicyModel(BaseModel):
 
                 actions = actions.cpu().numpy()
 
+                # Rescale and perform action
+                clipped_actions = actions
                 # Clip the actions to avoid out of bound error
                 if isinstance(self.action_space, gym.spaces.Box):
-                    actions = np.clip(actions, self.action_space.low, self.action_space.high)
-                elif isinstance(self.action_space, (gym.spaces.Discrete,
-                                                    gym.spaces.MultiDiscrete,
-                                                    gym.spaces.MultiBinary)):
-                    actions = actions.astype(np.int32)
+                    clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
+                elif isinstance(self.action_space, gym.spaces.Discrete):
+                    clipped_actions = actions.astype(np.int32)
 
-                new_obs, rewards, dones, infos = self.env.step(actions)
+                new_obs, rewards, dones, infos = self.env.step(clipped_actions)
 
                 # Give access to local variables
 
