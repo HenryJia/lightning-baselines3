@@ -1,5 +1,7 @@
 import copy
 
+import numpy as np
+
 import torch
 from torch import nn
 
@@ -69,7 +71,8 @@ class Model(DQN):
 if __name__ == '__main__':
     model = Model(env='CartPole-v1', eval_env='CartPole-v1')
 
-    trainer = pl.Trainer(max_epochs=10, gradient_clip_val=0.5)
+    trainer = pl.Trainer(max_epochs=20, gradient_clip_val=0.5)
     trainer.fit(model)
 
-    model.evaluate(num_eval_episodes=10, render=True)
+    rewards, lengths = model.evaluate(num_eval_episodes=10, render=True)
+    print(np.mean(rewards), np.mean(lengths))
