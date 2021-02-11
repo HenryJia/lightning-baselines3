@@ -149,7 +149,7 @@ class BaseModel(pl.LightningModule):
             action = self.predict(obs, deterministic=deterministic)
 
         if isinstance(self.action_space, gym.spaces.Box):
-            action = np.clip(actions, self.action_space.low, self.action_space.high)
+            action = np.clip(action, self.action_space.low, self.action_space.high)
         elif isinstance(self.action_space, (gym.spaces.Discrete,
                                             gym.spaces.MultiDiscrete,
                                             gym.spaces.MultiBinary)):
