@@ -189,13 +189,14 @@ class SAC(OffPolicyModel):
         actions = dist.rsample()
         log_probs = dist.log_prob(actions)
 
-        entropy_coef = torch.exp(self.log_entropy_coef)
+        log_entropy_coef = torch.clamp(self.log_entropy_coef, -10, 5)
+        entropy_coef = torch.exp(log_entropy_coef)
         if hasattr(self, 'entropy_coef_optimizer'):
             # Important: detach the variable from the graph
             # so we don't change it with other losses
             # see https://github.com/rail-berkeley/softlearning/issues/60
             entropy_coef = entropy_coef.detach()
-            entropy_coef_loss = -(self.log_entropy_coef * (log_probs + self.target_entropy).detach()).mean()
+            entropy_coef_loss = -(log_entropy_coef * (log_probs + self.target_entropy).detach()).mean()
             self.log('entropy_coef_loss', entropy_coef_loss, on_step=True, prog_bar=True, logger=True)
 
         self.log('entropy_coef', entropy_coef, on_step=True, prog_bar=False, logger=True)
