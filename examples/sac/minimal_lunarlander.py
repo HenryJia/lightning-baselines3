@@ -100,7 +100,7 @@ if __name__ == '__main__':
         eval_env='LunarLanderContinuous-v2',
         warmup_length=1000)
 
-    trainer = pl.Trainer(max_epochs=10, gradient_clip_val=0.5, gpus=[0])
+    trainer = pl.Trainer(max_epochs=10, gradient_clip_val=0.5)
     trainer.fit(model)
 
     model.evaluate(num_eval_episodes=10, render=True)
