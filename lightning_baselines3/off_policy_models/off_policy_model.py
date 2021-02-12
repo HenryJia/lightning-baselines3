@@ -142,15 +142,38 @@ class OffPolicyModel(BaseModel):
         high, low = self.action_space.high, self.action_space.low
         center = (high + low) / 2.0
         if squashed:
-            buffer_actions = actions
             actions = center + actions * (high - low) / 2.0
         else:
             actions = np.clip(
                 actions,
                 self.action_space.low,
                 self.action_space.high)
-            buffer_actions = (actions - center) / (high - low) * 2.0
-        return actions, buffer_actions
+        return actions
+
+
+    def sample_action(
+        self, obs: np.ndarray, deterministic: bool = False
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Samples an action from the environment or from our model
+        :param obs: The input observation
+        :param deterministic: Whether we are sampling deterministically.
+            This argument has no effect if we are warming up.
+        :return: The action to step with, and the action to store in our buffer
+        """
+        with torch.no_grad():
+            # Convert to pytorch tensor
+            obs_tensor = torch.as_tensor(obs).to(device=self.device, dtype=torch.float32)
+            actions = self.predict(obs_tensor, deterministic=False)
+
+        # Clip and scale actions appropriately
+        if isinstance(self.action_space, gym.spaces.Box):
+            actions = self.scale_actions(actions, self.squashed_actions)
+        elif isinstance(self.action_space, (gym.spaces.Discrete,
+                                            gym.spaces.MultiDiscrete,
+                                            gym.spaces.MultiBinary)):
+            actions = actions.astype(np.int32)
+        return actions
 
 
     def collect_rollouts(self):
@@ -173,33 +196,15 @@ class OffPolicyModel(BaseModel):
 
             if self.num_timesteps < self.warmup_length:
                 actions = np.array([self.action_space.sample()])
-                if isinstance(self.action_space, gym.spaces.Box):
-                    actions, buffer_actions = self.scale_actions(actions, False)
-                else:
-                    buffer_actions = actions
             else:
-                with torch.no_grad():
-                    # Convert to pytorch tensor
-                    obs_tensor = torch.as_tensor(self._last_obs).to(device=self.device, dtype=torch.float32)
-                    actions = self.predict(obs_tensor, deterministic=False)
-
-                # Clip and scale actions appropriately
-                if isinstance(self.action_space, gym.spaces.Box):
-                    actions, buffer_actions = self.scale_actions(actions, self.squashed_actions)
-                elif isinstance(self.action_space, (gym.spaces.Discrete,
-                                                    gym.spaces.MultiDiscrete,
-                                                    gym.spaces.MultiBinary)):
-                    actions = actions.astype(np.int32)
-                    if isinstance(self.action_space, gym.spaces.Discrete):
-                        # Reshape in case of discrete action
-                        buffer_actions = actions.reshape(-1, 1)
-                else:
-                    buffer_actions = actions
+                actions = self.sample_action(self._last_obs, deterministic=False)
 
             new_obs, rewards, dones, infos = self.env.step(actions)
 
-            # The actions we buffer are always scaled between [-1, 1] if we're working with box
-            self.replay_buffer.add(self._last_obs, new_obs, buffer_actions, rewards, dones)
+            if isinstance(self.action_space, gym.spaces.Discrete):
+                # Reshape in case of discrete action
+                actions = actions.reshape(-1, 1)
+            self.replay_buffer.add(self._last_obs, new_obs, actions, rewards, dones)
 
             self._last_obs = new_obs
             i += 1
