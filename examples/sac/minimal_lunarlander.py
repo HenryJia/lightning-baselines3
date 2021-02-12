@@ -3,9 +3,7 @@ import copy
 import numpy as np
 
 import torch
-from torch import distributions
 from torch import nn
-import torch.nn.functional as F
 
 import pytorch_lightning as pl
 
@@ -16,7 +14,7 @@ from lightning_baselines3.common.utils import polyak_update
 
 class Model(SAC):
     def __init__(self, *args, **kwargs):
-        super(Model, self).__init__(*args, **kwargs)
+        super(Model, self).__init__(*args, **kwargs, squashed_actions=True)
 
         # Note: The output layer of the actor must be Tanh activated
         self.actor = nn.Sequential(
@@ -25,7 +23,6 @@ class Model(SAC):
             nn.Linear(256, 256),
             nn.ReLU(),
             nn.Linear(256, self.action_space.shape[0] * 2))
-        self.actor[-1].bias.data.zero_()
 
         in_dim = self.observation_space.shape[0] + self.action_space.shape[0]
         self.critic1 = nn.Sequential(
@@ -103,8 +100,7 @@ if __name__ == '__main__':
         eval_env='LunarLanderContinuous-v2',
         warmup_length=1000)
 
-    trainer = pl.Trainer(max_epochs=100, gradient_clip_val=0.5, gpus=[0])
+    trainer = pl.Trainer(max_epochs=10, gradient_clip_val=0.5, gpus=[0])
     trainer.fit(model)
 
-    rewards, lengths = model.evaluate(num_eval_episodes=10, render=True)
-    print(np.mean(rewards))
+    model.evaluate(num_eval_episodes=10, render=True)

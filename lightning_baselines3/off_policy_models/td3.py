@@ -217,18 +217,18 @@ class TD3(OffPolicyModel):
             current_q2 = self.forward_critic2(batch.observations, batch.actions)
             critic_loss = critic_loss + F.mse_loss(current_q2, target_q)
 
+        opt_critic.zero_grad()
         self.manual_backward(critic_loss, opt_critic)
         opt_critic.step()
-        opt_critic.zero_grad()
 
         if batch_idx % self.policy_delay == 0:  # Optimize the actors
             # Compute actor loss
             actor_loss = -self.forward_critic1(batch.observations, self.forward_actor(batch.observations))
             actor_loss = actor_loss.mean()
 
+            opt_actor.zero_grad()
             self.manual_backward(actor_loss, opt_actor)
             opt_actor.step()
-            opt_actor.zero_grad()
 
             self.log('actor_loss', actor_loss, on_step=True, prog_bar=True, logger=True)
 

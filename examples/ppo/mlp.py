@@ -79,7 +79,7 @@ class Model(PPO):
         elif isinstance(self.action_space, spaces.Box):
             out = list(torch.chunk(out, 2, dim=1))
             out[1] = torch.diag_embed(
-                torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
+                torch.exp(torch.clamp(out[1], -5, 5)))
             dist = distributions.MultivariateNormal(
                 loc=out[0], scale_tril=out[1])
         return dist, self.critic(x).flatten()

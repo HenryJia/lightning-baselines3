@@ -6,19 +6,19 @@ import gym
 import pybullet_envs
 
 import torch
-from torch import distributions
 from torch import nn
 
 import pytorch_lightning as pl
 
 from lightning_baselines3.off_policy_models import SAC
+from lightning_baselines3.common.distributions import SquashedMultivariateNormal
 from lightning_baselines3.common.utils import polyak_update
 pybullet_envs.getList()
 
 
 class Model(SAC):
     def __init__(self, hidden_size, lr, tau, *args, **kwargs):
-        super(Model, self).__init__(*args, **kwargs)
+        super(Model, self).__init__(*args, **kwargs, squashed_actions=True)
 
         self.lr = lr
         self.tau = tau
@@ -54,9 +54,9 @@ class Model(SAC):
     def forward_actor(self, x):
         out = list(torch.chunk(self.actor(x), 2, dim=1))
         out[1] = torch.diag_embed(
-            torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
-        dist = distributions.MultivariateNormal(
-            loc=out[0], scale_tril=out[1])
+            torch.exp(torch.clamp(out[1], -5, 5)))
+        dist = SquashedMultivariateNormal(
+            loc=torch.tanh(out[0]), scale_tril=out[1])
         return dist
 
     def forward_critics(self, obs, action):
@@ -88,9 +88,9 @@ class Model(SAC):
         else:
             out = list(torch.chunk(out, 2, dim=1))
             out[1] = torch.diag_embed(
-                torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
-            out = distributions.MultivariateNormal(
-                loc=out[0], scale_tril=out[1]).sample()
+                torch.exp(torch.clamp(out[1], -5, 5)))
+            out = SquashedMultivariateNormal(
+                loc=torch.tanh(out[0]), scale_tril=out[1]).sample()
         return out.cpu().numpy()
 
     @staticmethod

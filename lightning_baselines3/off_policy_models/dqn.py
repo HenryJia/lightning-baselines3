@@ -128,7 +128,7 @@ class DQN(OffPolicyModel):
         Specifies the update step for DQN. Override this if you wish to modify the DQN algorithm
         """
         if self.num_timesteps < self.warmup_length:
-            return
+            return # This will make the loss a NaN but things are still working
 
         if float(self.num_timesteps - self.update_timestep) / self.target_update_interval > 1:
             self.update_target()

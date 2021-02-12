@@ -238,7 +238,7 @@ class SAC(OffPolicyModel):
         # Alternative: actor_loss = torch.mean(log_prob - qf1_pi)
         # Mean over all critic networks
         q_values_pi = self.forward_critics(batch.observations, actions)
-        min_qf_pi = torch.minimum(*q_values_pi).detach()
+        min_qf_pi = torch.minimum(*q_values_pi)
         actor_loss = (entropy_coef * log_probs[..., None] - min_qf_pi).mean()
         self.log('actor_loss', actor_loss, on_step=True, prog_bar=True, logger=True)
 
