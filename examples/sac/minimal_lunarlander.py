@@ -1,12 +1,16 @@
 import copy
 
+import numpy as np
+
 import torch
 from torch import distributions
 from torch import nn
+import torch.nn.functional as F
 
 import pytorch_lightning as pl
 
 from lightning_baselines3.off_policy_models import SAC
+from lightning_baselines3.common.distributions import SquashedMultivariateNormal
 from lightning_baselines3.common.utils import polyak_update
 
 
@@ -17,24 +21,25 @@ class Model(SAC):
         # Note: The output layer of the actor must be Tanh activated
         self.actor = nn.Sequential(
             nn.Linear(self.observation_space.shape[0], 256),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(256, 256),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(256, self.action_space.shape[0] * 2))
+        self.actor[-1].bias.data.zero_()
 
         in_dim = self.observation_space.shape[0] + self.action_space.shape[0]
         self.critic1 = nn.Sequential(
             nn.Linear(in_dim, 256),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(256, 256),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(256, 1))
 
         self.critic2 = nn.Sequential(
             nn.Linear(in_dim, 256),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(256, 256),
-            nn.Tanh(),
+            nn.ReLU(),
             nn.Linear(256, 1))
 
         self.critic_target1 = copy.deepcopy(self.critic1)
@@ -45,9 +50,9 @@ class Model(SAC):
     def forward_actor(self, x):
         out = list(torch.chunk(self.actor(x), 2, dim=1))
         out[1] = torch.diag_embed(
-            torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
-        dist = distributions.MultivariateNormal(
-            loc=out[0], scale_tril=out[1])
+            torch.exp(torch.clamp(out[1], -5, 5)))
+        dist = SquashedMultivariateNormal(
+            loc=torch.tanh(out[0]), scale_tril=out[1])
         return dist
 
     def forward_critics(self, obs, action):
@@ -79,9 +84,9 @@ class Model(SAC):
         else:
             out = list(torch.chunk(out, 2, dim=1))
             out[1] = torch.diag_embed(
-                torch.exp(0.5 * torch.clamp(out[1], -5, 5)))
-            out = distributions.MultivariateNormal(
-                loc=out[0], scale_tril=out[1]).sample()
+                torch.exp(torch.clamp(out[1], -5, 5)))
+            out = SquashedMultivariateNormal(
+                loc=torch.tanh(out[0]), scale_tril=out[1]).sample()
         return out.cpu().numpy()
 
     def configure_optimizers(self):
@@ -98,7 +103,8 @@ if __name__ == '__main__':
         eval_env='LunarLanderContinuous-v2',
         warmup_length=1000)
 
-    trainer = pl.Trainer(max_epochs=500, gradient_clip_val=0.5, gpus=[0])
+    trainer = pl.Trainer(max_epochs=100, gradient_clip_val=0.5, gpus=[0])
     trainer.fit(model)
 
-    model.evaluate(num_eval_episodes=10, render=True)
+    rewards, lengths = model.evaluate(num_eval_episodes=10, render=True)
+    print(np.mean(rewards))

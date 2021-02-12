@@ -65,6 +65,7 @@ class SAC(OffPolicyModel):
         use_sde: bool = False,
         sde_sample_freq: int = -1,
         use_sde_at_warmup: bool = False,
+        squashed_actions: bool = True,
         verbose: int = 0,
         seed: Optional[int] = None,
     ):
@@ -85,6 +86,7 @@ class SAC(OffPolicyModel):
             num_eval_episodes=num_eval_episodes,
             gamma=gamma,
             verbose=verbose,
+            squashed_actions=squashed_actions,
             seed=seed,
             use_sde=use_sde,
             use_sde_at_warmup=use_sde_at_warmup,
@@ -184,7 +186,7 @@ class SAC(OffPolicyModel):
 
         # Action by the current actor for the sampled state
         dist = self.forward_actor(batch.observations)
-        actions = dist.sample()
+        actions = dist.rsample()
         log_probs = dist.log_prob(actions)
 
         entropy_coef = torch.exp(self.log_entropy_coef)
@@ -201,14 +203,14 @@ class SAC(OffPolicyModel):
         # Optimize entropy coefficient, also called
         # entropy temperature or alpha in the paper
         if hasattr(self, 'entropy_coef_optimizer'):
+            self.entropy_coef_optimizer.zero_grad()
             self.manual_backward(entropy_coef_loss, self.entropy_coef_optimizer)
             self.entropy_coef_optimizer.step()
-            self.entropy_coef_optimizer.zero_grad()
 
         with torch.no_grad():
             # Select action according to policy
             next_dist = self.forward_actor(batch.next_observations)
-            next_actions = next_dist.sample()
+            next_actions = next_dist.rsample()
             next_log_probs = next_dist.log_prob(next_actions)
             # Compute the target Q value: min over all critics targets
             targets = self.forward_critic_targets(batch.next_observations, next_actions)
@@ -228,9 +230,9 @@ class SAC(OffPolicyModel):
         self.log('critic_loss', critic_loss, on_step=True, prog_bar=True, logger=True)
 
         # Optimize the critic
+        opt_critic.zero_grad()
         self.manual_backward(critic_loss, opt_critic)
         opt_critic.step()
-        opt_critic.zero_grad()
 
         # Compute actor loss
         # Alternative: actor_loss = torch.mean(log_prob - qf1_pi)
@@ -241,9 +243,9 @@ class SAC(OffPolicyModel):
         self.log('actor_loss', actor_loss, on_step=True, prog_bar=True, logger=True)
 
         # Optimize the actor
+        opt_actor.zero_grad()
         self.manual_backward(actor_loss, opt_actor)
         opt_actor.step()
-        opt_actor.zero_grad()
 
         # Update target networks
         if batch_idx % self.target_update_interval == 0:
