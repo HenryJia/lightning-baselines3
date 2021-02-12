@@ -213,6 +213,7 @@ class SAC(OffPolicyModel):
             next_dist = self.forward_actor(batch.next_observations)
             next_actions = next_dist.rsample()
             next_log_probs = next_dist.log_prob(next_actions)
+
             # Compute the target Q value: min over all critics targets
             targets = self.forward_critic_targets(batch.next_observations, next_actions)
             target_q = torch.minimum(*targets)

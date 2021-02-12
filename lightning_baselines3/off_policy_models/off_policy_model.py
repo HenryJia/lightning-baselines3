@@ -201,7 +201,12 @@ class OffPolicyModel(BaseModel):
 
             new_obs, rewards, dones, infos = self.env.step(actions)
 
-            if isinstance(self.action_space, gym.spaces.Discrete):
+            # If we are squashing actions, make sure the buffered actions are all squashed
+            if isinstance(self.action_space, gym.spaces.Box) and self.squashed_actions:
+                high, low = self.action_space.high, self.action_space.low
+                center = (high + low) / 2.0
+                actions = (actions - center) / (high - low) * 2.0
+            elif isinstance(self.action_space, gym.spaces.Discrete):
                 # Reshape in case of discrete action
                 actions = actions.reshape(-1, 1)
             self.replay_buffer.add(self._last_obs, new_obs, actions, rewards, dones)
