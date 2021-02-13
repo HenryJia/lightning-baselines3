@@ -163,7 +163,7 @@ class SAC(OffPolicyModel):
 
     def forward_critics(
         self, obs: torch.Tensor, action: torch.Tensor
-        )-> Tuple[torch.Tensor, torch.Tensor]:
+        )-> Tuple[torch.Tensor, ...]:
         """
         Runs the all critic networks.
         Override this function with your own.
@@ -177,7 +177,7 @@ class SAC(OffPolicyModel):
 
     def forward_critic_targets(
         self, obs: torch.Tensor, action: torch.Tensor
-        )-> Tuple[torch.Tensor, torch.Tensor]:
+        )-> Tuple[torch.Tensor, ...]:
         """
         Runs the all target critic networks.
         Override this function with your own.
