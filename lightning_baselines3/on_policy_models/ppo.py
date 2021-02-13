@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 import numpy as np
 from gym import spaces
@@ -99,6 +99,16 @@ class PPO(OnPolicyModel):
         self.entropy_coef = entropy_coef
         self.target_kl = target_kl
 
+    def forward(
+        self, x: torch.Tensor
+        ) -> Tuple[distributions.Distribution, torch.Tensor]:
+        """
+        Runs both the actor and critic network
+
+        :param x: The input observations
+        :return: The deterministic action of the actor
+        """
+        raise NotImplementedError
 
     def training_step(self, batch, batch_idx):
         """

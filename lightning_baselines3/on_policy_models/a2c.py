@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Tuple, Union
 
 import numpy as np
 from gym import spaces
@@ -81,6 +81,16 @@ class A2C(OnPolicyModel):
         self.value_coef = value_coef
         self.entropy_coef = entropy_coef
 
+    def forward(
+        self, x: torch.Tensor
+        ) -> Tuple[distributions.Distribution, torch.Tensor]:
+        """
+        Runs both the actor and critic network
+
+        :param x: The input observations
+        :return: The deterministic action of the actor
+        """
+        raise NotImplementedError
 
     def training_step(self, batch, batch_idx):
         """

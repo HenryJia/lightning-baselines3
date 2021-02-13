@@ -20,11 +20,17 @@ from lightning_baselines3.common.type_aliases import GymEnv
 
 class SAC(OffPolicyModel):
     """
-    Soft Actor Critic (SAC)
+    Soft Actor-Critic (SAC)
+    Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor,
+    This implementation borrows code from original implementation (https://github.com/haarnoja/sac)
+    from OpenAI Spinning Up (https://github.com/openai/spinningup), from the softlearning repo
+    (https://github.com/rail-berkeley/softlearning/)
+    and from Stable Baselines (https://github.com/hill-a/stable-baselines)
+    Paper: https://arxiv.org/abs/1801.01290
+    Introduction to SAC: https://spinningup.openai.com/en/latest/algorithms/sac.html
 
-    Paper: https://arxiv.org/abs/1312.5602, https://www.nature.com/articles/nature14236
-    Default hyperparameters are taken from the nature paper,
-    except for the optimizer and learning rate that were taken from Stable Baselines defaults.
+    Note: we use double q target and not value target as discussed
+    in https://github.com/hill-a/stable-baselines/issues/270
 
     :param env: The environment to learn from
         (if registered in Gym, can be str. Can be None for loading trained models)
@@ -42,6 +48,17 @@ class SAC(OffPolicyModel):
     :param target_update_interval: How many environment steps to wait between updating the target Q network
     :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
     :param gamma: the discount factor
+    :param entropy_coef: Entropy regularization coefficient. (Equivalent to
+        inverse of reward scale in the original SAC paper.)  Controlling exploration/exploitation trade-off.
+        Set it to 'auto' to learn it automatically (and 'auto_0.1' for using 0.1 as initial value)
+    :param target_entropy: target entropy when learning ``ent_coef`` (``ent_coef = 'auto'``)
+    :param use_sde: Whether to use generalized State Dependent Exploration (gSDE)
+        instead of action noise exploration (default: False)
+    :param sde_sample_freq: Sample a new noise matrix every n steps when using gSDE
+        Default: -1 (only sample at the beginning of the rollout)
+    :param use_sde_at_warmup: Whether to use gSDE instead of uniform sampling
+        during the warm up phase (before learning starts)
+    :param squashed_actions: Whether the actions are squashed between [-1, 1] and need to be unsquashed
     :param verbose: The verbosity level: 0 none, 1 training information, 2 debug (default: 0)
     :param seed: Seed for the pseudo random generators
     """
@@ -133,42 +150,48 @@ class SAC(OffPolicyModel):
             self.log_entropy_coef = torch.log(float(self.entropy_coef))
 
 
-    def forward_actor(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_actor(self, obs: torch.Tensor) -> torch.Tensor:
         """
-        Runs the Q network.
+        Runs the actor network.
         Override this function with your own.
 
-        :param x: The input observations
-        :return: The output Q values of the Q network
+        :param obs: The input observations
+        :return: The deterministic action of the actor
         """
         raise NotImplementedError
 
 
-    def forward_critics(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+    def forward_critics(
+        self, obs: torch.Tensor, action: torch.Tensor
+        )-> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Runs the target Q network.
+        Runs the all critic networks.
         Override this function with your own.
 
-        :param x: The input observations
-        :return: The output Q values of the target Q network
+        :param obs: The input observations
+        :param action: The input actions
+        :return: The output Q values of the critic networks in the form of a list
         """
         raise NotImplementedError
 
 
-    def forward_critic_targets(self, obs: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+    def forward_critic_targets(
+        self, obs: torch.Tensor, action: torch.Tensor
+        )-> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Runs the target Q network.
+        Runs the all target critic networks.
         Override this function with your own.
 
-        :param x: The input observations
-        :return: The output Q values of the target Q network
+        :param obs: The input observations
+        :param action: The input actions
+        :return: The output Q values of the critic networks in the form of a list
         """
         raise NotImplementedError
 
 
     def update_targets(self) -> None:
         """
-        Function to update the target Q network periodically.
+        Function to update the target critic networks periodically.
         Override this function with your own.
         """
         raise NotImplementedError
@@ -176,7 +199,7 @@ class SAC(OffPolicyModel):
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         """
-        Specifies the update step for DQN. Override this if you wish to modify the DQN algorithm
+        Specifies the update step for SAC. Override this if you wish to modify the SAC algorithm
         """
         # We need to sample because `log_std` may have changed between two gradient steps
         if self.num_timesteps < self.warmup_length:

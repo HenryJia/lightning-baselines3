@@ -43,7 +43,7 @@ class DDPG(TD3):
         (smoothing noise)
     :param target_noise_clip: Limit for absolute value of target policy smoothing noise.
     :param num_eval_episodes: The number of episodes to evaluate for at the end of a PyTorch Lightning epoch
-    :param squashed_actions: whether the actions are squashed between [-1, 1] and need to be unsquashed
+    :param squashed_actions: Whether the actions are squashed between [-1, 1] and need to be unsquashed
     :param gamma: the discount factor
     :param verbose: The verbosity level: 0 none, 1 training information, 2 debug (default: 0)
     :param seed: Seed for the pseudo random generators

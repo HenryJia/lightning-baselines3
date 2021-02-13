@@ -139,9 +139,9 @@ class BaseModel(pl.LightningModule):
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Samples an action from the environment or from our model
+
         :param obs: The input observation
         :param deterministic: Whether we are sampling deterministically.
-            This argument has no effect if we are warming up.
         :return: The action to step with, and the action to store in our buffer
         """
         with torch.no_grad():

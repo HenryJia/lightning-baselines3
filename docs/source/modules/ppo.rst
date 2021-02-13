@@ -67,6 +67,6 @@ Coming soon
 Parameters
 ----------
 
-.. automodule:: lightning_baselines3.on_policy_models.a2c
-.. autoclass:: A2C
+.. automodule:: lightning_baselines3.on_policy_models.ppo
+.. autoclass:: PPO
   :members:
