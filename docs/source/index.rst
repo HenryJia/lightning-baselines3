@@ -47,6 +47,7 @@ Coming Soon
   modules/dqn
   modules/td3
   modules/ddpg
+  modules/sac
 
 Citing Stable Baselines3
 ------------------------
