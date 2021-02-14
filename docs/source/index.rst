@@ -18,12 +18,11 @@ Implemented
 - Unified structure for all algorithms
 - Tests, high code coverage and type hints
 - Modular, flexible and clean code in line with the `Lightning Philosophy <https://github.com/PyTorchLightning/pytorch-lightning#lightning-philosophy>`_
-
+- Documented functions and classes
 
 Coming Soon
 
 - PEP8 compliant (unified code style)
-- Documented functions and classes
 - **The performance of each algorithm was tested** (see *Results* section in their respective page)
 
 .. toctree::
