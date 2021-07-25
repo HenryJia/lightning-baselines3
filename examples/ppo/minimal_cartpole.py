@@ -54,7 +54,7 @@ class Model(PPO):
 
 
 if __name__ == '__main__':
-    env = make_vec_env('CartPole-v1', n_envs=4, vec_env_cls=SubprocVecEnv)
+    env = make_vec_env('CartPole-v1', n_envs=8, vec_env_cls=SubprocVecEnv)
     eval_env = gym.make('CartPole-v1')
     model = Model(env=env, eval_env=eval_env)
 

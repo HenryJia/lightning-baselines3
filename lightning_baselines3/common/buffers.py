@@ -188,16 +188,11 @@ class RolloutBuffer(BaseBuffer):
         self.reset()
 
     def reset(self) -> None:
-        self.observations = []
-        self.actions = []
-        self.rewards = []
-        self.dones = []
-        self.values = []
-        self.log_probs = []
+        self.initialised = False
 
         super(RolloutBuffer, self).reset()
 
-    def finalize(self, last_values: torch.Tensor, last_dones: np.ndarray) -> RolloutBufferSamples:
+    def finalize(self, last_values: torch.Tensor, last_dones: torch.Tensor) -> RolloutBufferSamples:
         """
         Finalize and compute the returns (sum of discounted rewards) and GAE advantage.
         Adapted from Stable-Baselines PPO2.
@@ -207,28 +202,13 @@ class RolloutBuffer(BaseBuffer):
         where R is the discounted reward with value bootstrap,
         set ``gae_lambda=1.0`` during initialization.
 
-        :param dones: (np.ndarray)
-
+        :param last_values: (torch.Tensor) estimated value of the current state
+            following the current policy.
+        :param last_dones: (torch.Tensor) End of episode signal.
         """
         assert self.full, "Can only finalize RolloutBuffer when RolloutBuffer is full"
 
-        self.observations = np.stack(self.observations, axis=0)
-        self.actions = np.stack(self.actions, axis=0)
-        self.rewards = np.stack(self.rewards, axis=0)
-        self.dones = np.stack(self.dones, axis=0)
-        self.values = torch.stack(self.values, dim=0)
-        self.log_probs = torch.stack(self.log_probs, dim=0)
-
         assert last_values.device == self.values.device, 'All value function outputs must be on same device'
-
-        # Move everything to torch
-        # Lightning can handle moving things to device to some extent, but we need to make sure everything
-        # is consistent for computing advantages and returns
-        self.observations = torch.as_tensor(self.observations).float()
-        self.actions = torch.as_tensor(self.actions).float()
-        self.rewards = torch.as_tensor(self.rewards).to(device=last_values.device, dtype=torch.float32)
-        self.dones = torch.as_tensor(self.dones).to(device=last_values.device, dtype=torch.int32)
-        last_dones = torch.as_tensor(last_dones).to(device=last_values.device, dtype=torch.int32)
 
         last_gae_lam = 0
         advantages = torch.zeros_like(self.rewards)
@@ -256,28 +236,35 @@ class RolloutBuffer(BaseBuffer):
 
 
     def add(
-        self, obs: np.ndarray, action: np.ndarray, reward: np.ndarray, done: np.ndarray, value: torch.Tensor, log_prob: torch.Tensor
+        self, obs: torch.Tensor, action: torch.Tensor, reward: torch.Tensor, done: torch.Tensor, value: torch.Tensor, log_prob: torch.Tensor
     ) -> None:
         """
-        :param obs: (np.ndarray) Observation
-        :param action: (np.ndarray) Action
-        :param reward: (np.ndarray)
-        :param done: (np.ndarray) End of episode signal.
+        :param obs: (torch.tensor) Observation
+        :param action: (torch.tensor) Action
+        :param reward: (torch.tensor)
+        :param done: (torch.tensor) End of episode signal.
         :param value: (torch.Tensor) estimated value of the current state
             following the current policy.
         :param log_prob: (torch.Tensor) log probability of the action
             following the current policy.
         """
-        if len(log_prob.shape) == 0:
-            # Reshape 0-d tensor to avoid error
-            log_prob = log_prob[:, None]
 
-        self.observations += [np.array(obs).copy()]
-        self.actions += [np.array(action).copy()]
-        self.rewards += [np.array(reward).copy()]
-        self.dones += [np.array(done).copy()]
-        self.values += [value.flatten()]
-        self.log_probs += [log_prob]
+        # Initialise the first time we add something, so we know which device to put things on
+        if not self.initialised:
+            self.observations = torch.zeros((self.buffer_size, self.n_envs) + self.obs_shape, device=obs.device)
+            self.actions = torch.zeros((self.buffer_size, self.n_envs, self.action_dim), device=action.device)
+            self.rewards = torch.zeros((self.buffer_size, self.n_envs), device=reward.device)
+            self.dones = torch.zeros((self.buffer_size, self.n_envs), device=done.device)
+            self.values = torch.zeros((self.buffer_size, self.n_envs), device=value.device)
+            self.log_probs = torch.zeros((self.buffer_size, self.n_envs), device=log_prob.device)
+            self.initialised = True
+
+        self.observations[self.pos] = obs
+        self.actions[self.pos] = action
+        self.rewards[self.pos] = reward
+        self.dones[self.pos] = done
+        self.values[self.pos] = value
+        self.log_probs[self.pos] = log_prob
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True

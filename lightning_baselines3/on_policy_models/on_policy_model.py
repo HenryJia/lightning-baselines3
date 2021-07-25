@@ -121,30 +121,31 @@ class OnPolicyModel(BaseModel):
                 actions = dist.sample()
                 log_probs = dist.log_prob(actions)
 
-                actions = actions.cpu().numpy()
-
                 # Rescale and perform action
-                clipped_actions = actions
+                clipped_actions = actions.cpu().numpy()
                 # Clip the actions to avoid out of bound error
                 if isinstance(self.action_space, gym.spaces.Box):
-                    clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
+                    clipped_actions = np.clip(clipped_actions, self.action_space.low, self.action_space.high)
                 elif isinstance(self.action_space, gym.spaces.Discrete):
-                    clipped_actions = actions.astype(np.int32)
+                    clipped_actions = clipped_actions.astype(np.int32)
 
                 new_obs, rewards, dones, infos = self.env.step(clipped_actions)
 
-                # Give access to local variables
-
                 if isinstance(self.action_space, gym.spaces.Discrete):
                     # Reshape in case of discrete action
-                    actions = actions.reshape(-1, 1)
-                self.rollout_buffer.add(self._last_obs, actions, rewards, self._last_dones, values, log_probs)
+                    actions = actions.view(-1, 1)
+
+                if not torch.is_tensor(self._last_dones):
+                    self._last_dones = torch.as_tensor(self._last_dones).to(device=obs_tensor.device)
+                rewards = torch.as_tensor(rewards).to(device=obs_tensor.device)
+
+                self.rollout_buffer.add(obs_tensor, actions, rewards, self._last_dones, values, log_probs)
                 self._last_obs = new_obs
                 self._last_dones = dones
 
             final_obs = torch.as_tensor(new_obs).to(device=self.device, dtype=torch.float32)
             dist, final_values = self(final_obs)
-            samples = self.rollout_buffer.finalize(final_values, dones)
+            samples = self.rollout_buffer.finalize(final_values, torch.as_tensor(dones).to(device=obs_tensor.device, dtype=torch.float32))
 
             self.rollout_buffer.reset()
         self.train()
